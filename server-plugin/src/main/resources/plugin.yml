@@ -1,0 +1,17 @@
+name: DistrocraftServer
+version: 1.0.0
+main: net.distrocraft.plugin.DistrocraftPlugin
+api-version: "1.21"
+authors:
+  - Stuf_y
+description: Distributes compute tasks to player clients.
+commands:
+  distrocraft:
+    description: Distrocraft server management commands
+    usage: /distrocraft <status|list|submit|reload>
+    aliases: [dc]
+    permission: distrocraft.admin
+permissions:
+  distrocraft.admin:
+    description: Access to all Distrocraft admin commands
+    default: op

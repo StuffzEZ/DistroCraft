@@ -1,0 +1,53 @@
+package net.distrocraft.playermod.agent;
+
+import java.io.*;
+import java.nio.file.*;
+import java.util.Properties;
+
+public final class AgentConfig {
+
+    public String  host       = "localhost";
+    public int     port       = 25566;
+    public int     threads    = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+    public boolean autoStart  = false;
+    public boolean showHud    = true;
+
+    private static final String FILENAME = "distrocraft-client.properties";
+
+    public static AgentConfig load(Path configDir) {
+        AgentConfig cfg = new AgentConfig();
+        Path file = configDir.resolve(FILENAME);
+        if (Files.exists(file)) {
+            try (InputStream in = Files.newInputStream(file)) {
+                Properties p = new Properties();
+                p.load(in);
+                cfg.host      = p.getProperty("host",      cfg.host);
+                cfg.port      = Integer.parseInt(p.getProperty("port",    String.valueOf(cfg.port)));
+                cfg.threads   = Integer.parseInt(p.getProperty("threads", String.valueOf(cfg.threads)));
+                cfg.autoStart = Boolean.parseBoolean(p.getProperty("autoStart", String.valueOf(cfg.autoStart)));
+                cfg.showHud   = Boolean.parseBoolean(p.getProperty("showHud",   String.valueOf(cfg.showHud)));
+            } catch (IOException | NumberFormatException ignored) {}
+        }
+        return cfg;
+    }
+
+    public void save(Path configDir) {
+        try {
+            Files.createDirectories(configDir);
+            Path file = configDir.resolve(FILENAME);
+            Properties p = new Properties();
+            p.setProperty("host",      host);
+            p.setProperty("port",      String.valueOf(port));
+            p.setProperty("threads",   String.valueOf(threads));
+            p.setProperty("autoStart", String.valueOf(autoStart));
+            p.setProperty("showHud",   String.valueOf(showHud));
+            try (OutputStream out = Files.newOutputStream(file)) {
+                p.store(out, "Distrocraft Client Configuration");
+            }
+        } catch (IOException ignored) {}
+    }
+
+    public static AgentConfig defaults() {
+        return new AgentConfig();
+    }
+}

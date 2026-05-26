@@ -1,0 +1,1 @@
+could you make the following versions: 1) server mod 2) player client (As a mod- not an app) 3) player client (as an app) 4) (do this last) server plugin. for mods, do neoforge and fabric 1.21.x (as the same project) and for plugins do paper 1.21.x

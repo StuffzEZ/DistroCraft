@@ -1,0 +1,11 @@
+# Distrocraft Server Plugin Configuration
+# The coordinator listens on a separate TCP port from the Minecraft server.
+# Players run the Distrocraft player mod or standalone app and connect here.
+
+port: 25566
+enabled: true
+require-in-game: true
+max-clients-per-player: 1
+debug-logging: false
+task-timeout-sec: 60
+client-timeout-sec: 30

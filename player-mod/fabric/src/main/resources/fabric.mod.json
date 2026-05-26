@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "distrocraft_player",
+  "version": "1.0.0",
+  "name": "Distrocraft Player",
+  "description": "Contribute your spare resources to a Minecraft server.",
+  "authors": ["Stuf_y"],
+  "license": "GNU GPLv3",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "net.distrocraft.playermod.DistrocraftPlayerModFabric"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "fabric-api": "*",
+    "minecraft": "~1.21.1"
+  }
+}

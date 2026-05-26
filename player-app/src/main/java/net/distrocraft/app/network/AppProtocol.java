@@ -1,0 +1,43 @@
+package net.distrocraft.app.network;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+
+public final class AppProtocol {
+
+    public static final int VERSION      = 1;
+    public static final int DEFAULT_PORT = 25566;
+    public static final Gson GSON = new GsonBuilder().serializeNulls().create();
+
+    private AppProtocol() {}
+
+    public enum MessageType { HELLO, REGISTER, TASK, RESULT, PING, PONG, DISCONNECT }
+
+    public record BaseMessage(String type) {
+        public MessageType messageType() { return MessageType.valueOf(type); }
+    }
+    public record HelloMessage(String type, int version, String serverId) {}
+    public record RegisterMessage(String type, String clientId, int maxThreads, String playerName) {
+        public RegisterMessage(String clientId, int maxThreads, String playerName) {
+            this(MessageType.REGISTER.name(), clientId, maxThreads, playerName);
+        }
+    }
+    public record TaskMessage(String type, String taskId, String kind, JsonObject payload) {}
+    public record ResultMessage(String type, String taskId, boolean success, JsonObject data, String error) {
+        public static ResultMessage ok(String taskId, JsonObject data) {
+            return new ResultMessage(MessageType.RESULT.name(), taskId, true, data, null);
+        }
+        public static ResultMessage fail(String taskId, String err) {
+            return new ResultMessage(MessageType.RESULT.name(), taskId, false, null, err);
+        }
+    }
+    public record PingMessage(String type)  { public PingMessage()  { this(MessageType.PING.name()); } }
+    public record PongMessage(String type)  { public PongMessage()  { this(MessageType.PONG.name()); } }
+    public record DisconnectMessage(String type, String reason) {}
+
+    public static String serialise(Object o)         { return GSON.toJson(o); }
+    public static BaseMessage peekType(String line)  { return GSON.fromJson(line, BaseMessage.class); }
+    public static HelloMessage parseHello(String l)  { return GSON.fromJson(l, HelloMessage.class); }
+    public static TaskMessage  parseTask(String l)   { return GSON.fromJson(l, TaskMessage.class); }
+}
