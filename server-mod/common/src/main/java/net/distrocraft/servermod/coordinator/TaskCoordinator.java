@@ -10,6 +10,7 @@ import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.Consumer;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -94,9 +95,14 @@ public final class TaskCoordinator {
     public String getServerId()           { return serverId; }
 
     public String registerPayloadClient(String playerUuid, String playerName, int maxThreads, Consumer<String> sendCallback) {
+        return registerPayloadClient(playerUuid, playerName, maxThreads, null, sendCallback);
+    }
+
+    public String registerPayloadClient(String playerUuid, String playerName, int maxThreads,
+                                         Map<String, Integer> capabilities, Consumer<String> sendCallback) {
         int threads = Math.max(1, Math.min(maxThreads, 32));
         try {
-            ConnectedClient client = new ConnectedClient(playerUuid, playerName, threads, sendCallback);
+            ConnectedClient client = new ConnectedClient(playerUuid, playerName, threads, capabilities, sendCallback);
             clients.put(playerUuid, client);
             client.send(new Protocol.HelloMessage(serverId));
             DistroLogger.info("Payload client registered: " + client);
@@ -153,9 +159,11 @@ public final class TaskCoordinator {
             }
             Protocol.RegisterMessage reg = Protocol.parseRegister(line);
             int threads = Math.max(1, Math.min(reg.maxThreads(), 32));
+            Map<String, Integer> caps = reg.capabilities();
+            if (caps == null) caps = Map.of("threads", threads);
 
             ConnectedClient client = new ConnectedClient(
-                    reg.clientId(), reg.playerName(), threads, socket);
+                    reg.clientId(), reg.playerName(), threads, caps, socket);
             clients.put(reg.clientId(), client);
             DistroLogger.info("Client registered: " + client);
 

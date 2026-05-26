@@ -4,6 +4,8 @@ import net.distrocraft.app.agent.StandaloneAgent;
 import net.distrocraft.app.ui.AppGui;
 
 import javax.swing.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public final class DistrocraftApp {
 
@@ -31,10 +33,21 @@ public final class DistrocraftApp {
                 : Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
         String label   = args.length > 3 ? args[3] : System.getProperty("user.name", "distrocraft");
 
-        System.out.println("Distrocraft client (headless)");
-        System.out.println("Host=" + host + " Port=" + port + " Threads=" + threads + " Label=" + label);
+        // Parse resource limits from remaining args: <key>=<value> ...
+        Map<String, Integer> caps = new LinkedHashMap<>();
+        caps.put("threads", threads);
+        for (int i = 4; i < args.length; i++) {
+            String[] kv = args[i].split("=", 2);
+            if (kv.length == 2) {
+                try { caps.put(kv[0], Integer.parseInt(kv[1])); }
+                catch (NumberFormatException ignored) {}
+            }
+        }
 
-        StandaloneAgent agent = new StandaloneAgent(host, port, threads, label);
+        System.out.println("Distrocraft client (headless)");
+        System.out.println("Host=" + host + " Port=" + port + " Resources=" + caps + " Label=" + label);
+
+        StandaloneAgent agent = new StandaloneAgent(host, port, threads, label, caps);
         agent.onStatus(s -> System.out.println("[Status] " + s));
         agent.onLog(s    -> System.out.println("[Log]    " + s));
         agent.start();

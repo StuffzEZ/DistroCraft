@@ -8,6 +8,7 @@ import java.io.OutputStreamWriter;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -20,6 +21,7 @@ public final class ConnectedClient {
     private final BufferedWriter writer;
     private final Consumer<String> sendCallback;
     private final int maxThreads;
+    private final Map<String, Integer> capabilities;
     private final Set<String> activeTasks = ConcurrentHashMap.newKeySet();
     private volatile boolean connected = true;
     private long lastPingSent = 0;
@@ -28,10 +30,12 @@ public final class ConnectedClient {
     public ConnectedClient(String clientId,
                            String playerName,
                            int maxThreads,
+                           Map<String, Integer> capabilities,
                            Socket socket) throws IOException {
         this.clientId = clientId;
         this.playerName = playerName;
         this.maxThreads = maxThreads;
+        this.capabilities = capabilities != null ? capabilities : Map.of("threads", maxThreads);
         this.socket = socket;
         this.writer = new BufferedWriter(
                 new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
@@ -41,10 +45,12 @@ public final class ConnectedClient {
     public ConnectedClient(String clientId,
                            String playerName,
                            int maxThreads,
+                           Map<String, Integer> capabilities,
                            Consumer<String> sendCallback) {
         this.clientId = clientId;
         this.playerName = playerName;
         this.maxThreads = maxThreads;
+        this.capabilities = capabilities != null ? capabilities : Map.of("threads", maxThreads);
         this.socket = null;
         this.writer = null;
         this.sendCallback = sendCallback;
@@ -95,6 +101,7 @@ public final class ConnectedClient {
     public String getClientId()              { return clientId; }
     public String getPlayerName()            { return playerName; }
     public int getMaxThreads()               { return maxThreads; }
+    public Map<String, Integer> getCapabilities() { return capabilities; }
     public boolean isConnected()             { return connected; }
     public Set<String> getActiveTasks()      { return Collections.unmodifiableSet(activeTasks); }
     public long getLastPingSent()            { return lastPingSent; }
@@ -104,6 +111,7 @@ public final class ConnectedClient {
     public String toString() {
         String name = playerName != null ? playerName : "app:" + clientId.substring(0, 8);
         return "Client{" + name + ", threads=" + maxThreads +
+               ", resources=" + capabilities +
                ", active=" + activeTasks.size() + ", alive=" + connected + "}";
     }
 }

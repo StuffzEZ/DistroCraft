@@ -7,6 +7,7 @@ import net.distrocraft.playermod.task.TaskExecutor;
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
@@ -17,6 +18,7 @@ public final class ComputeAgent {
     private final int    port;
     private final String clientId;
     private final int    threads;
+    private final Map<String, Integer> capabilities;
     private final String playerName;
     private final Consumer<String> sendCallback;
 
@@ -39,23 +41,27 @@ public final class ComputeAgent {
     private volatile int tasksCompleted = 0;
     private volatile int tasksFailed    = 0;
 
-    public ComputeAgent(String host, int port, int threads, String playerName) {
-        this.host       = host;
-        this.port       = port;
-        this.clientId   = UUID.randomUUID().toString();
-        this.threads    = threads;
-        this.playerName = playerName;
+    public ComputeAgent(String host, int port, int threads, String playerName,
+                        Map<String, Integer> capabilities) {
+        this.host         = host;
+        this.port         = port;
+        this.clientId     = UUID.randomUUID().toString();
+        this.threads      = threads;
+        this.capabilities = capabilities != null ? capabilities : Map.of("threads", threads);
+        this.playerName   = playerName;
         this.sendCallback = null;
-        this.taskPool   = Executors.newFixedThreadPool(threads, r -> {
+        this.taskPool     = Executors.newFixedThreadPool(threads, r -> {
             Thread t = new Thread(r, "distrocraft-task-worker"); t.setDaemon(true); return t;
         });
     }
 
-    public ComputeAgent(String clientId, int threads, String playerName, Consumer<String> sendCallback) {
+    public ComputeAgent(String clientId, int threads, String playerName,
+                        Map<String, Integer> capabilities, Consumer<String> sendCallback) {
         this.host          = null;
         this.port          = -1;
         this.clientId      = clientId;
         this.threads       = threads;
+        this.capabilities  = capabilities != null ? capabilities : Map.of("threads", threads);
         this.playerName    = playerName;
         this.sendCallback  = sendCallback;
         this.taskPool      = Executors.newFixedThreadPool(threads, r -> {
@@ -70,12 +76,23 @@ public final class ComputeAgent {
 
         if (sendCallback != null) {
             connected = true;
-            onStatusChange.accept("Connected (" + threads + " worker threads)");
+            onStatusChange.accept("Connected \u2014 " + resourcesString());
         } else {
             Thread connector = new Thread(this::connectAndRun, "distrocraft-agent-main");
             connector.setDaemon(true);
             connector.start();
         }
+    }
+
+    public Map<String, Integer> getCapabilities() { return capabilities; }
+
+    private String resourcesString() {
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, Integer> e : capabilities.entrySet()) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(e.getKey()).append("=").append(e.getValue());
+        }
+        return sb.toString();
     }
 
     public void stop() {
@@ -136,7 +153,7 @@ public final class ComputeAgent {
 
                 handshake();
                 connected = true;
-                onStatusChange.accept("Connected (" + threads + " worker threads)");
+                onStatusChange.accept("Connected \u2014 " + resourcesString());
 
                 readLoop();
 
@@ -160,7 +177,7 @@ public final class ComputeAgent {
                                   " client=" + ClientProtocol.VERSION);
         }
 
-        send(new ClientProtocol.RegisterMessage(clientId, threads, playerName));
+        send(new ClientProtocol.RegisterMessage(clientId, threads, playerName, capabilities));
     }
 
     private void readLoop() throws IOException {

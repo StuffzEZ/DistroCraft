@@ -151,7 +151,7 @@ if "%target%"==":server-mod:fabric:build :server-mod:neoforge:build" (
 if "%target%"==":player-mod:fabric:build :player-mod:neoforge:build" (
     call :list player-mod fabric & call :list player-mod neoforge
 )
-if "%target%"=="" (
+if "%proj%"=="" (
     call :list server-mod fabric    & call :list server-mod neoforge
     call :list player-mod fabric    & call :list player-mod neoforge
     call :list player-app           & call :list server-plugin
@@ -167,7 +167,7 @@ if "%~2"=="" (
 exit /b
 
 :all
-set "target="
+set "target=:server-mod:common:build :server-mod:fabric:build :server-mod:neoforge:build :player-mod:common:build :player-mod:fabric:build :player-mod:neoforge:build :player-app:build :server-plugin:build"
 set "proj="
 call :doBuild
 goto :menu

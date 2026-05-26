@@ -3,6 +3,7 @@ package net.distrocraft.plugin.network;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
+import java.util.Map;
 
 public final class PluginProtocol {
 
@@ -22,7 +23,14 @@ public final class PluginProtocol {
             this(MessageType.HELLO.name(), VERSION, serverId);
         }
     }
-    public record RegisterMessage(String type, String clientId, int maxThreads, String playerName) {}
+    public record RegisterMessage(String type, String clientId, int maxThreads, String playerName, Map<String, Integer> capabilities) {
+        public RegisterMessage(String clientId, int maxThreads, String playerName) {
+            this(MessageType.REGISTER.name(), clientId, maxThreads, playerName, Map.of("threads", maxThreads));
+        }
+        public RegisterMessage(String clientId, int maxThreads, String playerName, Map<String, Integer> capabilities) {
+            this(MessageType.REGISTER.name(), clientId, maxThreads, playerName, capabilities);
+        }
+    }
     public record TaskMessage(String type, String taskId, String kind, JsonObject payload) {
         public TaskMessage(String taskId, String kind, JsonObject payload) {
             this(MessageType.TASK.name(), taskId, kind, payload);

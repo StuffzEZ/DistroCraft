@@ -15,6 +15,7 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import net.minecraft.server.level.ServerPlayer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import java.util.Map;
 
 @Mod(DistrocraftServerModNeoForge.MOD_ID)
 public class DistrocraftServerModNeoForge {
@@ -78,7 +79,8 @@ public class DistrocraftServerModNeoForge {
         String uuid = player.getUUID().toString();
         String name = player.getGameProfile().getName();
         int threads = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
-        coordinator.registerPayloadClient(uuid, name, threads,
+        Map<String, Integer> caps = Map.of("threads", threads);
+        coordinator.registerPayloadClient(uuid, name, threads, caps,
             json -> PacketDistributor.sendToPlayer(player, new DistrocraftPayload(json)));
     }
 

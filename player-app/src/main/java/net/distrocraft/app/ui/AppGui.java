@@ -9,6 +9,10 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public final class AppGui extends JFrame {
 
@@ -18,10 +22,13 @@ public final class AppGui extends JFrame {
     private final JTextField labelField;
     private final JButton    connectBtn;
     private final JButton    disconnectBtn;
+    private final JButton    resourcesBtn;
     private final JLabel     statusLabel;
     private final JLabel     doneLabel;
     private final JLabel     failLabel;
     private final JTextArea  logArea;
+
+    private final Map<String, Integer> extraResources = new LinkedHashMap<>();
 
     private StandaloneAgent agent;
     private Timer           statsTimer;
@@ -44,6 +51,7 @@ public final class AppGui extends JFrame {
         connectBtn     = new JButton("Connect");
         disconnectBtn  = new JButton("Disconnect");
         disconnectBtn.setEnabled(false);
+        resourcesBtn   = new JButton("Resources\u2026");
 
         JPanel formPanel = new JPanel(new GridBagLayout());
         formPanel.setBorder(new EmptyBorder(8, 8, 8, 8));
@@ -57,6 +65,7 @@ public final class AppGui extends JFrame {
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         btnPanel.add(connectBtn);
         btnPanel.add(disconnectBtn);
+        btnPanel.add(resourcesBtn);
         gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 4;
         formPanel.add(btnPanel, gbc);
 
@@ -90,6 +99,7 @@ public final class AppGui extends JFrame {
 
         connectBtn.addActionListener(e -> connect());
         disconnectBtn.addActionListener(e -> disconnect());
+        resourcesBtn.addActionListener(e -> showResourcesDialog());
 
         statsTimer = new Timer(500, e -> refreshStats());
         statsTimer.start();
@@ -114,7 +124,10 @@ public final class AppGui extends JFrame {
         if (host.isEmpty()) { JOptionPane.showMessageDialog(this, "Host is required"); return; }
         if (port <= 0)      { JOptionPane.showMessageDialog(this, "Invalid port"); return; }
 
-        agent = new StandaloneAgent(host, port, threads, label);
+        Map<String, Integer> caps = new LinkedHashMap<>();
+        caps.put("threads", threads);
+        caps.putAll(extraResources);
+        agent = new StandaloneAgent(host, port, threads, label, caps);
         agent.onStatus(s -> SwingUtilities.invokeLater(() -> statusLabel.setText("Status: " + s)));
         agent.onLog(s    -> SwingUtilities.invokeLater(() -> appendLog(s)));
         agent.start();
@@ -147,6 +160,41 @@ public final class AppGui extends JFrame {
         String line = "[" + LocalTime.now().format(TIME_FMT) + "] " + msg + "\n";
         logArea.append(line);
         logArea.setCaretPosition(logArea.getDocument().getLength());
+    }
+
+    private void showResourcesDialog() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(2, 4, 2, 4);
+        gbc.anchor = GridBagConstraints.WEST;
+
+        java.util.List<JTextField> valFields = new java.util.ArrayList<>();
+        // Pre-populate with existing extra resources
+        if (extraResources.isEmpty()) {
+            extraResources.put("ram_mb", 2048);
+        }
+        java.util.List<String> keys = new java.util.ArrayList<>(extraResources.keySet());
+        int row = 0;
+        for (String key : keys) {
+            gbc.gridx = 0; gbc.gridy = row;
+            panel.add(new JLabel(key), gbc);
+            JTextField f = new JTextField(String.valueOf(extraResources.get(key)), 8);
+            gbc.gridx = 1;
+            panel.add(f, gbc);
+            valFields.add(f);
+            row++;
+        }
+
+        int result = JOptionPane.showConfirmDialog(this, panel, "Resource Limits",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (result == JOptionPane.OK_OPTION) {
+            extraResources.clear();
+            for (int i = 0; i < keys.size() && i < valFields.size(); i++) {
+                try {
+                    extraResources.put(keys.get(i), Integer.parseInt(valFields.get(i).getText()));
+                } catch (NumberFormatException ignored) {}
+            }
+        }
     }
 
     private int parsePort() {

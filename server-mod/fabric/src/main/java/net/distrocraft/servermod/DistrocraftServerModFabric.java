@@ -11,6 +11,7 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
+import java.util.Map;
 
 public class DistrocraftServerModFabric implements DedicatedServerModInitializer {
 
@@ -65,7 +66,8 @@ public class DistrocraftServerModFabric implements DedicatedServerModInitializer
             String uuid = player.getUUID().toString();
             String name = player.getGameProfile().getName();
             int threads = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
-            coordinator.registerPayloadClient(uuid, name, threads,
+            Map<String, Integer> caps = Map.of("threads", threads);
+            coordinator.registerPayloadClient(uuid, name, threads, caps,
                 json -> ServerPlayNetworking.send(player, new DistrocraftPayload(json)));
         });
 

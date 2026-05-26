@@ -104,9 +104,11 @@ public final class PluginCoordinator {
             }
             PluginProtocol.RegisterMessage reg = PluginProtocol.parseRegister(line);
             int threads = Math.max(1, Math.min(reg.maxThreads(), 32));
+            Map<String, Integer> caps = reg.capabilities();
+            if (caps == null) caps = Map.of("threads", threads);
 
             PluginConnectedClient client = new PluginConnectedClient(
-                    reg.clientId(), reg.playerName(), threads, socket);
+                    reg.clientId(), reg.playerName(), threads, caps, socket);
             clients.put(reg.clientId(), client);
             logger.info("[Distrocraft] Client registered: " + client);
 

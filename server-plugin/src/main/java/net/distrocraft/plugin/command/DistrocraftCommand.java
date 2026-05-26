@@ -44,8 +44,8 @@ public final class DistrocraftCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage("\u00a76[Distrocraft] \u00a7fConnected clients (" + clients.size() + "):");
                     for (PluginConnectedClient c : clients) {
                         String name = c.getPlayerName() != null ? c.getPlayerName() : "(app)";
-                        sender.sendMessage(String.format("\u00a77  %-20s threads=\u00a7a%d\u00a77 active=\u00a7e%d",
-                                name, c.getMaxThreads(), c.getActiveTasks().size()));
+                        sender.sendMessage(String.format("\u00a77  %-20s threads=\u00a7a%d\u00a77 caps=%s\u00a77 active=\u00a7e%d",
+                                name, c.getMaxThreads(), c.getCapabilities(), c.getActiveTasks().size()));
                     }
                 }
                 yield true;

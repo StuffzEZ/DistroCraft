@@ -77,20 +77,39 @@ public class DistrocraftPlayerModFabric implements ClientModInitializer {
                     (agent != null ? " | done=" + agent.getTasksCompleted() +
                                     " fail=" + agent.getTasksFailed() : ""));
             case "set"    -> {
-                if (parts.length < 3) { chat(mc, "Usage: /distro set threads <value>"); return; }
-                if (!"threads".equals(parts[1])) {
-                    chat(mc, "Only 'threads' is configurable. Usage: /distro set threads <value>");
-                    return;
-                }
-                try {
-                    config.threads = Integer.parseInt(parts[2]);
+                if (parts.length < 3) { chat(mc, "Usage: /distro set <key> <value> or /distro set resources <key>=<value> ..."); return; }
+                if ("threads".equals(parts[1]) && parts.length >= 3) {
+                    try {
+                        config.threads = Integer.parseInt(parts[2]);
+                        config.resources.put("threads", config.threads);
+                        config.save(configDir);
+                        chat(mc, "threads set to " + parts[2]);
+                    } catch (NumberFormatException e) {
+                        chat(mc, "Invalid value: " + parts[2]);
+                    }
+                } else if ("resources".equals(parts[1])) {
+                    for (int i = 2; i < parts.length; i++) {
+                        String[] kv = parts[i].split("=", 2);
+                        if (kv.length == 2) {
+                            try {
+                                config.resources.put(kv[0], Integer.parseInt(kv[1]));
+                            } catch (NumberFormatException e) {
+                                chat(mc, "Invalid value for " + kv[0] + ": " + kv[1]);
+                            }
+                        } else {
+                            chat(mc, "Usage: <key>=<value>, got: " + parts[i]);
+                        }
+                    }
+                    if (config.resources.containsKey("threads")) {
+                        config.threads = config.resources.get("threads");
+                    }
                     config.save(configDir);
-                    chat(mc, "threads set to " + parts[2]);
-                } catch (NumberFormatException e) {
-                    chat(mc, "Invalid value: " + parts[2]);
+                    chat(mc, "Resources updated: " + config.resources);
+                } else {
+                    chat(mc, "Usage: /distro set threads <value> or /distro set resources <key>=<value> ...");
                 }
             }
-            default -> chat(mc, "Commands: start, stop, status, set threads <value>");
+            default -> chat(mc, "Commands: start, stop, status, set [threads|resources]");
         }
     }
 
@@ -100,7 +119,7 @@ public class DistrocraftPlayerModFabric implements ClientModInitializer {
         if (mc.player == null) return;
         String uuid = mc.player.getUUID().toString();
         String name = mc.player.getGameProfile().getName();
-        agent = new ComputeAgent(uuid, config.threads, name,
+        agent = new ComputeAgent(uuid, config.threads, name, config.resources,
             json -> ClientPlayNetworking.send(new DistrocraftPayload(json)));
         agent.onStatusChange(s -> statusLine = "Distrocraft: " + s);
         agent.onError(e       -> LOGGER.warn("Agent error: {}", e));

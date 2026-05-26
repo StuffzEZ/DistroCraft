@@ -7,6 +7,7 @@ import net.distrocraft.app.task.AppTaskExecutor;
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
@@ -17,6 +18,7 @@ public final class StandaloneAgent {
     private final int    port;
     private final String clientId;
     private final int    threads;
+    private final Map<String, Integer> capabilities;
     private final String label;
 
     private Socket         socket;
@@ -37,13 +39,15 @@ public final class StandaloneAgent {
 
     private volatile int done = 0, failed = 0;
 
-    public StandaloneAgent(String host, int port, int threads, String label) {
-        this.host     = host;
-        this.port     = port;
-        this.threads  = threads;
-        this.label    = label;
-        this.clientId = UUID.randomUUID().toString();
-        this.taskPool = Executors.newFixedThreadPool(threads, r -> {
+    public StandaloneAgent(String host, int port, int threads, String label,
+                           Map<String, Integer> capabilities) {
+        this.host         = host;
+        this.port         = port;
+        this.threads      = threads;
+        this.label        = label;
+        this.clientId     = UUID.randomUUID().toString();
+        this.capabilities = capabilities != null ? capabilities : Map.of("threads", threads);
+        this.taskPool     = Executors.newFixedThreadPool(threads, r -> {
             Thread t = new Thread(r, "dc-worker"); t.setDaemon(true); return t;
         });
     }
@@ -65,10 +69,11 @@ public final class StandaloneAgent {
         onStatus.accept("Stopped");
     }
 
-    public boolean isConnected()   { return connected; }
-    public int getTasksDone()      { return done; }
-    public int getTasksFailed()    { return failed; }
-    public String getClientId()    { return clientId; }
+    public boolean isConnected()       { return connected; }
+    public int getTasksDone()          { return done; }
+    public int getTasksFailed()        { return failed; }
+    public String getClientId()        { return clientId; }
+    public Map<String, Integer> getCapabilities() { return capabilities; }
 
     public void onStatus(Consumer<String> cb) { this.onStatus = cb; }
     public void onLog(Consumer<String> cb)    { this.onLog    = cb; }
@@ -89,10 +94,10 @@ public final class StandaloneAgent {
                 AppProtocol.HelloMessage hello = AppProtocol.parseHello(helloLine);
                 if (hello.version() != AppProtocol.VERSION)
                     throw new IOException("Protocol version mismatch");
-                send(new AppProtocol.RegisterMessage(clientId, threads, label));
+                send(new AppProtocol.RegisterMessage(clientId, threads, label, capabilities));
 
                 connected = true;
-                onStatus.accept("Connected \u2014 " + threads + " threads");
+                onStatus.accept("Connected \u2014 " + resourcesString());
                 onLog.accept("Registered with server " + hello.serverId());
 
                 scheduler.scheduleAtFixedRate(
@@ -137,6 +142,15 @@ public final class StandaloneAgent {
             failed++;
             onLog.accept("Failed " + task.taskId() + ": " + e.getMessage());
         }
+    }
+
+    private String resourcesString() {
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, Integer> e : capabilities.entrySet()) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(e.getKey()).append("=").append(e.getValue());
+        }
+        return sb.toString();
     }
 
     private synchronized void send(Object msg) {

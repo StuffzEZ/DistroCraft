@@ -3,6 +3,7 @@ package net.distrocraft.playermod.network;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
+import java.util.Map;
 
 public final class ClientProtocol {
 
@@ -20,9 +21,12 @@ public final class ClientProtocol {
 
     public record HelloMessage(String type, int version, String serverId) {}
 
-    public record RegisterMessage(String type, String clientId, int maxThreads, String playerName) {
+    public record RegisterMessage(String type, String clientId, int maxThreads, String playerName, Map<String, Integer> capabilities) {
         public RegisterMessage(String clientId, int maxThreads, String playerName) {
-            this(MessageType.REGISTER.name(), clientId, maxThreads, playerName);
+            this(MessageType.REGISTER.name(), clientId, maxThreads, playerName, Map.of("threads", maxThreads));
+        }
+        public RegisterMessage(String clientId, int maxThreads, String playerName, Map<String, Integer> capabilities) {
+            this(MessageType.REGISTER.name(), clientId, maxThreads, playerName, capabilities);
         }
     }
 
