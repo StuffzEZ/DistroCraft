@@ -6,6 +6,7 @@
 <title>DistroCraft - Distributed Computing for Minecraft</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -307,6 +308,7 @@ nav .container {
 .dl-preview .filename { font-weight: 600; color: var(--green-800); transition: color 0.3s; }
 .dl-preview .hash { color: var(--text-secondary); margin-top: 4px; font-size: 0.75rem; transition: color 0.3s; }
 .dl-preview .size { color: var(--text-secondary); margin-top: 2px; font-size: 0.75rem; transition: color 0.3s; }
+.dl-preview .mc-version { color: var(--green-600); font-size: 0.75rem; font-weight: 500; transition: color 0.3s; }
 
 .btn {
   display: inline-flex;
@@ -599,6 +601,7 @@ footer a:hover { text-decoration: underline; }
 
       <div class="dl-preview" id="dl-preview">
         <div class="filename" id="dl-filename"></div>
+        <div class="mc-version" id="dl-mcversion" style="margin-top: 4px;"></div>
         <div class="hash" id="dl-hash"></div>
         <div class="size" id="dl-size"></div>
       </div>
@@ -815,6 +818,7 @@ const loaderEl    = document.getElementById('loader');
 const versionEl   = document.getElementById('version');
 const previewEl   = document.getElementById('dl-preview');
 const filenameEl  = document.getElementById('dl-filename');
+const mcVersionEl = document.getElementById('dl-mcversion');
 const hashEl      = document.getElementById('dl-hash');
 const sizeEl      = document.getElementById('dl-size');
 const dlBtn       = document.getElementById('dl-btn');
@@ -836,6 +840,120 @@ function getFileName(component, loader, tag) {
 
 function getDownloadUrl(filename, tag) {
   return `https://github.com/${GITHUB_REPO}/releases/download/${tag}/${filename}`;
+}
+
+// ZIP reader + MC version extraction
+const MC_CACHE = {};
+
+async function readZipEntry(url, fileSize, entryPath) {
+  const u8 = (buf, off, len) => buf.slice(off, off + len);
+  const r16 = (buf, off) => (buf[off] | (buf[off + 1] << 8)) >>> 0;
+  const r32 = (buf, off) => (buf[off] | (buf[off + 1] << 8) | (buf[off + 2] << 16) | (buf[off + 3] << 24)) >>> 0;
+
+  const range = async (s, e) => {
+    const r = await fetch(url, { headers: { Range: `bytes=${s}-${e}` } });
+    return new Uint8Array(await r.arrayBuffer());
+  };
+
+  // Read EOCD from last 64KB
+  const eocdChunk = Math.min(65536, fileSize);
+  const eocdBuf = await range(fileSize - eocdChunk, fileSize - 1);
+  let eocdOff = -1;
+  for (let i = eocdBuf.length - 22; i >= 0; i--) {
+    if (eocdBuf[i] === 0x50 && eocdBuf[i + 1] === 0x4B && eocdBuf[i + 2] === 0x05 && eocdBuf[i + 3] === 0x06) {
+      eocdOff = i; break;
+    }
+  }
+  if (eocdOff < 0) throw new Error('EOCD not found');
+
+  const cdOffset = r32(eocdBuf, eocdOff + 16);
+  const cdSize = r32(eocdBuf, eocdOff + 12);
+  const totalEntries = r16(eocdBuf, eocdOff + 10);
+
+  // Read central directory
+  const cdBuf = await range(cdOffset, cdOffset + cdSize - 1);
+
+  const target = entryPath.replace(/\\/g, '/').toLowerCase();
+  let pos = 0;
+  for (let i = 0; i < totalEntries; i++) {
+    if (r32(cdBuf, pos) !== 0x02014b50) break;
+    const fnLen = r16(cdBuf, pos + 28);
+    const extraLen = r16(cdBuf, pos + 30);
+    const commentLen = r16(cdBuf, pos + 32);
+    const localOff = r32(cdBuf, pos + 42);
+    const compMethod = r16(cdBuf, pos + 10);
+    const compSize = r32(cdBuf, pos + 20);
+
+    const fnBytes = u8(cdBuf, pos + 46, fnLen);
+    const fn = new TextDecoder().decode(fnBytes).toLowerCase();
+
+    if (fn === target) {
+      // Read local file header to get data offset
+      const localHdrSize = 30 + fnLen + extraLen;
+      const dataStart = localOff + localHdrSize;
+      const dataEnd = dataStart + compSize - 1;
+      const compressed = await range(dataStart, dataEnd);
+
+      if (compMethod === 0) {
+        return new TextDecoder().decode(compressed);
+      } else if (compMethod === 8) {
+        const raw = pako.inflate(compressed);
+        return new TextDecoder().decode(raw);
+      }
+      throw new Error('Unsupported compression: ' + compMethod);
+    }
+    pos += 46 + fnLen + extraLen + commentLen;
+  }
+  return null;
+}
+
+async function extractMcVersion(url, component, loader) {
+  if (component === 'app') return null;
+
+  let entryPath, meta;
+  if (component === 'plugin') {
+    entryPath = 'plugin.yml';
+  } else if (loader === 'fabric') {
+    entryPath = 'fabric.mod.json';
+  } else {
+    entryPath = 'META-INF/neoforge.mods.toml';
+  }
+
+  const cacheKey = url + '|' + entryPath;
+  if (MC_CACHE[cacheKey]) return MC_CACHE[cacheKey];
+
+  try {
+    const head = await fetch(url, { method: 'HEAD' });
+    const fileSize = parseInt(head.headers.get('content-length'));
+    if (!fileSize) throw new Error('No content-length');
+
+    const text = await readZipEntry(url, fileSize, entryPath);
+    if (!text) return null;
+
+    if (entryPath === 'fabric.mod.json') {
+      const j = JSON.parse(text);
+      const dep = j.depends && j.depends.minecraft;
+      meta = dep ? `MC ${dep}` : null;
+    } else if (entryPath === 'plugin.yml') {
+      const m = text.match(/^api-version:\s*(.+)/m);
+      meta = m ? `MC ${m[1].trim()}` : null;
+    } else if (entryPath === 'META-INF/neoforge.mods.toml') {
+      const m = text.match(/^minecraftVersion\s*=\s*"([^"]+)"/m);
+      if (m) {
+        meta = `MC ${m[1]}`;
+      } else {
+        // Try dependencies table
+        const dm = text.match(/modId\s*=\s*"minecraft"\s*\n\s*versionRange\s*=\s*"([^"]+)"/m);
+        meta = dm ? `MC ${dm[1]}` : null;
+      }
+    }
+
+    MC_CACHE[cacheKey] = meta || null;
+    return MC_CACHE[cacheKey];
+  } catch (e) {
+    console.warn('MC version lookup failed:', e);
+    return null;
+  }
 }
 
 function updateLoaderOptions() {
@@ -933,6 +1051,16 @@ function updatePreview() {
   }
 
   previewEl.classList.add('visible');
+
+  // Async MC version lookup from JAR metadata
+  mcVersionEl.textContent = 'Scanning JAR for MC version...';
+  const url = getDownloadUrl(filename, tag);
+  const currentFile = filename;
+  extractMcVersion(url, comp, loader).then(ver => {
+    // Ignore stale result if selection changed
+    if (filenameEl.textContent !== currentFile) return;
+    mcVersionEl.textContent = ver ? `Minecraft ${ver}` : '';
+  });
 }
 
 function formatSize(bytes) {
