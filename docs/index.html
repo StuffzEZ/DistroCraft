@@ -836,14 +836,13 @@ const dlStatus     = document.getElementById('dl-status');
 
 let releases = [];
 
-function getFileName(component, loader, tag, mcVer) {
+function getFileName(component, loader, tag) {
   const ver = tag.replace(/^v/, '');
-  const mc = mcVer ? `-mc${mcVer}` : '';
   switch (component) {
     case 'app':   return `DistroCraft-app-${ver}.jar`;
-    case 'server': return `DistroCraft-server-${ver}${mc}-${loader}.jar`;
-    case 'client': return `DistroCraft-client-${ver}${mc}-${loader}.jar`;
-    case 'plugin': return `DistroCraft-server-${ver}${mc}-paper.jar`;
+    case 'server': return `DistroCraft-server-${ver}-${loader}.jar`;
+    case 'client': return `DistroCraft-client-${ver}-${loader}.jar`;
+    case 'plugin': return `DistroCraft-server-${ver}-paper.jar`;
     default:      return '';
   }
 }
@@ -991,8 +990,7 @@ function updatePreview() {
 
   // Show preview
   const release = releases.find(r => r.tag_name === tag);
-  const mcVer = release ? getReleaseMcVersion(release) : null;
-  const filename = getFileName(comp, loader, tag, mcVer);
+  const filename = getFileName(comp, loader, tag);
   if (!filename) return;
 
   filenameEl.textContent = filename;
@@ -1039,8 +1037,7 @@ function downloadFile() {
   if (!tag) return;
 
   const release = releases.find(r => r.tag_name === tag);
-  const mcVer = release ? getReleaseMcVersion(release) : null;
-  const filename = getFileName(comp, loader, tag, mcVer);
+  const filename = getFileName(comp, loader, tag);
   const url = getDownloadUrl(filename, tag);
 
   dlBtn.disabled = true;
