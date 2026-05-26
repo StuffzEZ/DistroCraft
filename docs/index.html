@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DistroCraft - Distributed Computing for Minecraft</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root, [data-theme="light"] {
+  --bg: #f0fdf4;
+  --bg-card: rgba(255,255,255,0.92);
+  --bg-card-solid: #ffffff;
+  --bg-comp: #f0fdf4;
+  --bg-code: #dcfce7;
+  --bg-pre: #f9fafb;
+  --bg-nav: rgba(255,255,255,0.85);
+  --text: #1f2937;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --border: #bbf7d0;
+  --border-light: #e5e7eb;
+  --border-pre: #e5e7eb;
+  --green-50: #f0fdf4;
+  --green-100: #dcfce7;
+  --green-200: #bbf7d0;
+  --green-300: #86efac;
+  --green-400: #4ade80;
+  --green-500: #22c55e;
+  --green-600: #16a34a;
+  --green-700: #15803d;
+  --green-800: #166534;
+  --green-900: #14532d;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --opacity-grid: 0.5;
+  --opacity-glow: 0.08;
+  --opacity-nav: 1;
+  --select-bg: #ffffff;
+  --select-color: #1f2937;
+  --shadow-green: rgba(34,197,94,0.3);
+  --shadow-green-hover: rgba(34,197,94,0.4);
+  --badge-bg: #bbf7d0;
+  --badge-text: #166534;
+}
+
+[data-theme="dark"] {
+  --bg: #031508;
+  --bg-card: rgba(15,30,15,0.92);
+  --bg-card-solid: #0a1a0a;
+  --bg-comp: #0a1f0a;
+  --bg-code: #0d2a0d;
+  --bg-pre: #0a150a;
+  --bg-nav: rgba(5,20,8,0.92);
+  --text: #e5e7eb;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --border: #14532d;
+  --border-light: #1f3a1f;
+  --border-pre: #1f3a1f;
+  --green-50: #052e16;
+  --green-100: #0d3a1a;
+  --green-200: #14532d;
+  --green-300: #166534;
+  --green-400: #15803d;
+  --green-500: #22c55e;
+  --green-600: #4ade80;
+  --green-700: #86efac;
+  --green-800: #bbf7d0;
+  --green-900: #dcfce7;
+  --gray-100: #1a1f1a;
+  --gray-200: #2a302a;
+  --gray-300: #3a443a;
+  --gray-400: #6b7280;
+  --gray-500: #9ca3af;
+  --gray-600: #b0b7b0;
+  --gray-700: #c5ccc5;
+  --gray-800: #e5e7eb;
+  --opacity-grid: 0.15;
+  --opacity-glow: 0.15;
+  --opacity-nav: 1;
+  --select-bg: #0a1a0a;
+  --select-color: #e5e7eb;
+  --shadow-green: rgba(34,197,94,0.2);
+  --shadow-green-hover: rgba(34,197,94,0.35);
+  --badge-bg: #14532d;
+  --badge-text: #bbf7d0;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+  position: relative;
+  background: var(--bg);
+  transition: background 0.3s, color 0.3s;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--green-200) 1px, transparent 1px),
+    linear-gradient(90deg, var(--green-200) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: var(--opacity-grid);
+  transition: opacity 0.3s;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 0%, rgba(34,197,94,var(--opacity-glow)) 0%, transparent 70%);
+  transition: opacity 0.3s;
+}
+
+.container {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* Nav */
+nav {
+  background: var(--bg-nav);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  transition: background 0.3s, border-color 0.3s;
+}
+nav .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 1.25rem;
+  color: var(--green-600);
+  text-decoration: none;
+}
+.logo svg { flex-shrink: 0; }
+.nav-links { display: flex; align-items: center; gap: 6px; }
+.nav-links a {
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.875rem;
+  padding: 8px 14px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+.nav-links a:hover {
+  background: var(--green-100);
+  color: var(--green-600);
+}
+
+.theme-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.theme-toggle:hover {
+  background: var(--green-100);
+  color: var(--green-600);
+  border-color: var(--green-300);
+}
+.theme-toggle .label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+@media (max-width: 480px) { .theme-toggle .label { display: none; } }
+
+/* Hero */
+.hero {
+  text-align: center;
+  padding: 80px 0 48px;
+}
+.hero h1 {
+  font-size: 3rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  background: linear-gradient(135deg, var(--green-700), var(--green-500));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero p {
+  margin-top: 16px;
+  font-size: 1.125rem;
+  color: var(--gray-500);
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Card */
+.card {
+  background: var(--bg-card);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  margin-bottom: 24px;
+  transition: box-shadow 0.2s, background 0.3s, border-color 0.3s;
+}
+.card:hover { box-shadow: 0 4px 24px var(--shadow-green); }
+.card h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--green-800);
+  margin-bottom: 4px;
+  transition: color 0.3s;
+}
+.card .subtitle {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: 20px;
+  transition: color 0.3s;
+}
+
+/* Download form */
+.dl-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+@media (max-width: 640px) { .dl-grid { grid-template-columns: 1fr; } }
+
+.dl-grid label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gray-500);
+  margin-bottom: 4px;
+}
+.dl-grid select, .dl-grid input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.875rem;
+  background: var(--select-bg);
+  color: var(--select-color);
+  transition: border-color 0.2s, background 0.3s, color 0.3s;
+  appearance: auto;
+}
+.dl-grid select:focus, .dl-grid input:focus {
+  outline: none;
+  border-color: var(--green-500);
+  box-shadow: 0 0 0 3px rgba(34,197,94,0.15);
+}
+
+.dl-preview {
+  display: none;
+  background: var(--bg-comp);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-top: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8125rem;
+  word-break: break-all;
+  transition: background 0.3s, border-color 0.3s;
+}
+.dl-preview.visible { display: block; }
+.dl-preview .filename { font-weight: 600; color: var(--green-800); transition: color 0.3s; }
+.dl-preview .hash { color: var(--text-secondary); margin-top: 4px; font-size: 0.75rem; transition: color 0.3s; }
+.dl-preview .size { color: var(--text-secondary); margin-top: 2px; font-size: 0.75rem; transition: color 0.3s; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 28px;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--green-600), var(--green-500));
+  color: white;
+  box-shadow: 0 2px 8px var(--shadow-green);
+  width: 100%;
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px var(--shadow-green-hover);
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn-secondary {
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border: 1px solid var(--gray-200);
+  transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+.btn-secondary:hover { background: var(--gray-200); }
+
+/* Status */
+.dl-status {
+  margin-top: 12px;
+  font-size: 0.875rem;
+  color: var(--gray-500);
+  min-height: 1.5em;
+}
+.dl-status.error { color: #dc2626; }
+.dl-status.success { color: var(--green-600); }
+
+/* Docs */
+.doc-section { margin-bottom: 28px; }
+.doc-section:last-child { margin-bottom: 0; }
+.doc-section h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--green-800);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.doc-section h3 .badge {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--green-200);
+  color: var(--green-800);
+}
+.doc-section p, .doc-section li { color: var(--gray-600); font-size: 0.9375rem; }
+.doc-section ul { padding-left: 20px; }
+.doc-section li { margin-bottom: 4px; }
+.doc-section code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8125rem;
+  background: var(--bg-code);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--green-800);
+  transition: background 0.3s, color 0.3s;
+}
+.doc-section pre {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8125rem;
+  background: var(--bg-pre);
+  border: 1px solid var(--border-pre);
+  border-radius: 8px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  margin: 8px 0;
+  line-height: 1.5;
+  transition: background 0.3s, border-color 0.3s;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+.tab-btn {
+  padding: 10px 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--gray-500);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.2s;
+}
+.tab-btn:hover { color: var(--green-700); }
+.tab-btn.active {
+  color: var(--green-700);
+  border-bottom-color: var(--green-500);
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Components grid */
+.comp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 16px 0;
+}
+@media (max-width: 640px) { .comp-grid { grid-template-columns: 1fr; } }
+.comp-card {
+  background: var(--bg-comp);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  transition: background 0.3s, border-color 0.3s;
+}
+.comp-card h4 { font-size: 0.875rem; font-weight: 600; color: var(--green-800); transition: color 0.3s; }
+.comp-card p { font-size: 0.8125rem; color: var(--text-secondary); margin-top: 2px; transition: color 0.3s; }
+.comp-card code { font-size: 0.75rem; }
+
+/* Commands table */
+.cmd-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.cmd-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-weight: 600;
+  color: var(--gray-500);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+}
+.cmd-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--gray-600);
+}
+.cmd-table td:first-child { font-family: 'JetBrains Mono', monospace; font-size: 0.8125rem; color: var(--green-700); }
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--gray-400);
+  font-size: 0.8125rem;
+}
+footer a { color: var(--green-600); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+
+/* Loading spinner */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.releases-loading {
+  text-align: center;
+  padding: 20px;
+  color: var(--gray-500);
+}
+
+/* Sections */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.section-title h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--green-800);
+}
+.section-title .line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--green-200), transparent);
+}
+
+/* Selected version info */
+.version-info {
+  font-size: 0.8125rem;
+  color: var(--gray-500);
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.version-info .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green-500);
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <a href="#" class="logo">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect x="2" y="2" width="24" height="24" rx="6" fill="currentColor" opacity="0.15"/>
+        <path d="M9 14l3 3 7-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="14" cy="14" r="8" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+      </svg>
+      DistroCraft
+    </a>
+<div class="nav-links">
+  <a href="#download">Download</a>
+  <a href="#docs">Docs</a>
+  <a href="https://github.com/Stuf-y/DistroCraft" target="_blank">GitHub</a>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+    <span id="themeIcon">☀️</span>
+    <span class="label" id="themeLabel">Light</span>
+  </button>
+</div>
+  </div>
+</nav>
+
+<main class="container">
+
+  <section class="hero">
+    <h1>DistroCraft</h1>
+    <p>Distributed computing for Minecraft — let your players contribute their idle CPU cycles to power your server.</p>
+  </section>
+
+  <!-- Downloads -->
+  <section id="downloads">
+    <div class="section-title">
+      <h2>Downloads</h2>
+      <div class="line"></div>
+    </div>
+
+    <div class="card" id="dl-card">
+      <h2>Get DistroCraft</h2>
+      <p class="subtitle">Select your platform and version to download the right build.</p>
+
+      <div class="dl-grid">
+        <div>
+          <label for="component">Component</label>
+          <select id="component">
+            <option value="server">Server Mod</option>
+            <option value="client">Client Mod</option>
+            <option value="app">Standalone App</option>
+            <option value="plugin">Paper Plugin</option>
+          </select>
+        </div>
+        <div>
+          <label for="loader">Loader</label>
+          <select id="loader">
+            <option value="fabric">Fabric</option>
+            <option value="neoforge">NeoForge</option>
+          </select>
+        </div>
+        <div>
+          <label for="version">Version</label>
+          <select id="version">
+            <option value="">Loading releases...</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="dl-preview" id="dl-preview">
+        <div class="filename" id="dl-filename"></div>
+        <div class="hash" id="dl-hash"></div>
+        <div class="size" id="dl-size"></div>
+      </div>
+
+      <button class="btn btn-primary" id="dl-btn" disabled>
+        <span id="dl-btn-text">Select a version</span>
+      </button>
+      <div class="dl-status" id="dl-status"></div>
+    </div>
+  </section>
+
+  <!-- Docs -->
+  <section id="docs" style="margin-top: 48px;">
+    <div class="section-title">
+      <h2>Documentation</h2>
+      <div class="line"></div>
+    </div>
+
+    <div class="card">
+      <div class="tabs" id="doc-tabs">
+        <button class="tab-btn active" data-tab="overview">Overview</button>
+        <button class="tab-btn" data-tab="quickstart">Quick Start</button>
+        <button class="tab-btn" data-tab="commands">Commands</button>
+        <button class="tab-btn" data-tab="config">Configuration</button>
+        <button class="tab-btn" data-tab="protocol">Protocol</button>
+        <button class="tab-btn" data-tab="tasks">Task Kinds</button>
+      </div>
+
+      <!-- Overview -->
+      <div class="tab-content active" id="tab-overview">
+        <div class="doc-section">
+          <h3>What is DistroCraft?</h3>
+          <p>DistroCraft splits CPU-bound work into small tasks and dispatches them to connected player machines. Results are returned asynchronously to the server. Communication uses Minecraft's custom payload system — no extra ports needed for the mod variant.</p>
+        </div>
+        <div class="doc-section">
+          <h3>Components</h3>
+          <div class="comp-grid">
+            <div class="comp-card">
+              <h4>Server Mod</h4>
+              <p>NeoForge + Fabric 1.21.x server-side mod. Drops into <code>mods/</code>.</p>
+            </div>
+            <div class="comp-card">
+              <h4>Client Mod</h4>
+              <p>NeoForge + Fabric 1.21.x client mod. Drops into <code>.minecraft/mods/</code>.</p>
+            </div>
+            <div class="comp-card">
+              <h4>Standalone App</h4>
+              <p>Pure Java app (GUI + CLI). No Minecraft required. Connect from anywhere.</p>
+            </div>
+            <div class="comp-card">
+              <h4>Paper Plugin</h4>
+              <p>Paper 1.21.x server plugin. Alternative to the server mod — uses TCP port.</p>
+            </div>
+          </div>
+          <p style="margin-top: 12px; font-size: 0.875rem; color: var(--gray-500);">Use <strong>either</strong> the server mod <strong>or</strong> the Paper plugin — not both. Players use <strong>either</strong> the client mod <strong>or</strong> the standalone app.</p>
+        </div>
+        <div class="doc-section">
+          <h3>License</h3>
+          <p>DistroCraft is licensed under <strong>GNU GPLv3</strong>.</p>
+        </div>
+      </div>
+
+      <!-- Quick Start -->
+      <div class="tab-content" id="tab-quickstart">
+        <div class="doc-section">
+          <h3>1. Server (mod or plugin)</h3>
+          <p><strong>NeoForge / Fabric mod:</strong> Drop the server mod JAR into your server's <code>mods/</code> folder. The coordinator starts automatically.</p>
+          <p style="margin-top: 8px;"><strong>Paper plugin:</strong> Drop the plugin JAR into <code>plugins/</code>. Configure via <code>plugins/DistrocraftServer/config.yml</code>.</p>
+        </div>
+        <div class="doc-section">
+          <h3>2. Players (mod)</h3>
+          <p>Drop the client mod JAR into <code>.minecraft/mods/</code>. Use <code>/distro start</code> to connect — you'll automatically contribute your spare CPU cycles.</p>
+        </div>
+        <div class="doc-section">
+          <h3>3. Players (standalone app)</h3>
+          <p><strong>GUI mode:</strong> <code>java -jar DistroCraft-app-*.jar</code></p>
+          <p style="margin-top: 4px;"><strong>CLI mode:</strong> <code>java -jar DistroCraft-app-*.jar &lt;host&gt; [port] [threads] [label]</code></p>
+          <pre>java -jar DistroCraft-app-1.0.0.jar play.myserver.com 25566 4 Steve</pre>
+        </div>
+        <div class="doc-section">
+          <h3>Requirements</h3>
+          <p>Java 21 or later. For mods: Minecraft 1.21.x with NeoForge 21.1+ or Fabric Loader 0.16+.</p>
+        </div>
+      </div>
+
+      <!-- Commands -->
+      <div class="tab-content" id="tab-commands">
+        <div class="doc-section">
+          <h3>Player In-Game Commands</h3>
+          <p>Type these in chat (prefixed with <code>/distro</code>):</p>
+          <table class="cmd-table" style="margin-top: 12px;">
+            <thead>
+              <tr><th>Command</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>/distro start</td><td>Connect to the server's coordinator</td></tr>
+              <tr><td>/distro stop</td><td>Disconnect from the coordinator</td></tr>
+              <tr><td>/distro status</td><td>Show connection status and task stats</td></tr>
+              <tr><td>/distro set threads &lt;n&gt;</td><td>Set worker thread count</td></tr>
+              <tr><td>/distro set resources &lt;key&gt;=&lt;value&gt; ...</td><td>Set resource limits (e.g. <code>ram_mb=2048</code>)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="doc-section">
+          <h3>Server Plugin Commands</h3>
+          <table class="cmd-table">
+            <thead>
+              <tr><th>Command</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>/dc status</td><td>Overall coordinator stats</td></tr>
+              <tr><td>/dc list</td><td>List connected clients with capabilities</td></tr>
+              <tr><td>/dc submit &lt;KIND&gt; &lt;k&gt;=&lt;v&gt; ...</td><td>Queue a task of any kind</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Configuration -->
+      <div class="tab-content" id="tab-config">
+        <div class="doc-section">
+          <h3>Server Mod <span class="badge">config/distrocraft-server.properties</span></h3>
+          <pre>port=25566
+enabled=true
+requireInGame=true
+maxClientsPerPlayer=1
+debugLogging=false
+taskTimeoutSec=60
+clientTimeoutSec=30</pre>
+        </div>
+        <div class="doc-section">
+          <h3>Player Mod <span class="badge">.minecraft/config/distrocraft-client.properties</span></h3>
+          <pre>host=localhost
+port=25566
+threads=2
+autoStart=false
+showHud=true
+# Additional resources:
+resource.ram_mb=2048</pre>
+        </div>
+        <div class="doc-section">
+          <h3>Paper Plugin <span class="badge">plugins/DistrocraftServer/config.yml</span></h3>
+          <p>YAML config with the same options as the server mod. Created automatically on first run.</p>
+        </div>
+      </div>
+
+      <!-- Protocol -->
+      <div class="tab-content" id="tab-protocol">
+        <div class="doc-section">
+          <h3>Wire Format</h3>
+          <p>All communication is newline-delimited JSON over custom payload packets (mods) or TCP (app/plugin).</p>
+          <pre>SERVER &rarr; CLIENT  HELLO      {"type":"HELLO","version":1,"serverId":"&lt;uuid&gt;"}
+CLIENT &rarr; SERVER  REGISTER   {"type":"REGISTER","clientId":"...","maxThreads":4,"playerName":"Steve","capabilities":{"threads":4,"ram_mb":2048}}
+SERVER &rarr; CLIENT  TASK       {"type":"TASK","taskId":"&lt;uuid&gt;","kind":"CHUNK_GEN","payload":{...}}
+CLIENT &rarr; SERVER  RESULT     {"type":"RESULT","taskId":"...","success":true,"data":{...}}
+EITHER           PING/PONG  {"type":"PING"} / {"type":"PONG"}
+SERVER &rarr; CLIENT  DISCONNECT {"type":"DISCONNECT","reason":"..."}</pre>
+        </div>
+      </div>
+
+      <!-- Task Kinds -->
+      <div class="tab-content" id="tab-tasks">
+        <div class="doc-section">
+          <h3>Dynamic Task Kinds</h3>
+          <p>Task kinds are <strong>arbitrary strings</strong> — there is no enum. Any string is a valid task kind. Register handlers on both sides.</p>
+        </div>
+        <div class="doc-section">
+          <h3>Built-in Examples</h3>
+          <table class="cmd-table">
+            <thead>
+              <tr><th>Kind</th><th>Payload</th><th>Result</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>CHUNK_GEN</td><td>cx, cz, dimension, seed</td><td>cx, cz, heightmap</td></tr>
+              <tr><td>PATHFIND</td><td>x1,y1,z1, x2,y2,z2, context</td><td>found, estimatedLength, pathJson</td></tr>
+              <tr><td>STRUCTURE_SCAN</td><td>x1,z1, x2,z2, seed, structureId</td><td>candidateX, candidateZ, confidence</td></tr>
+              <tr><td>PHYSICS_SIM</td><td>simulationType, params</td><td>simulationType, stepsCompleted, energy</td></tr>
+              <tr><td>CUSTOM</td><td>any JsonObject</td><td>echo + processed:true</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="doc-section">
+          <h3>Custom Task Handler <span class="badge">Example</span></h3>
+          <pre>// Register on the client:
+TaskExecutor.getRegistry().register("AERONAUTICS_PHYSICS", payload -> {
+    JsonObject result = new JsonObject();
+    // your solver here
+    return result;
+});
+
+// Submit from the server:
+DistroTask task = DistroTask.of("AERONAUTICS_PHYSICS", payload);
+coordinator.submitTask(task);</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="container">
+    <p>DistroCraft &mdash; <a href="https://github.com/StuffzEZ/DistroCraft" target="_blank">GitHub</a> &bull; <a href="https://github.com/StuffzEZ/DistroCraft/blob/main/LICENSE" target="_blank">GNU GPLv3</a> &bull; Built with &hearts; for the Minecraft community</p>
+    <p style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted);">This project was developed with the assistance of AI (Claude by Anthropic).</p>
+  </div>
+</footer>
+
+<script>
+const GITHUB_REPO = 'StuffzEZ/DistroCraft';
+const GITHUB_API  = `https://api.github.com/repos/${GITHUB_REPO}/releases`;
+
+const componentEl = document.getElementById('component');
+const loaderEl    = document.getElementById('loader');
+const versionEl   = document.getElementById('version');
+const previewEl   = document.getElementById('dl-preview');
+const filenameEl  = document.getElementById('dl-filename');
+const hashEl      = document.getElementById('dl-hash');
+const sizeEl      = document.getElementById('dl-size');
+const dlBtn       = document.getElementById('dl-btn');
+const dlBtnText   = document.getElementById('dl-btn-text');
+const dlStatus    = document.getElementById('dl-status');
+
+let releases = [];
+
+function getFileName(component, loader, tag) {
+  const ver = tag.replace(/^v/, '');
+  switch (component) {
+    case 'app':   return `DistroCraft-app-${ver}.jar`;
+    case 'server': return `DistroCraft-server-${ver}-${loader}.jar`;
+    case 'client': return `DistroCraft-client-${ver}-${loader}.jar`;
+    case 'plugin': return `DistroCraft-server-${ver}-paper.jar`;
+    default:      return '';
+  }
+}
+
+function getDownloadUrl(filename, tag) {
+  return `https://github.com/${GITHUB_REPO}/releases/download/${tag}/${filename}`;
+}
+
+function updateLoaderOptions() {
+  const comp = componentEl.value;
+  loaderEl.innerHTML = '';
+  if (comp === 'app') {
+    loaderEl.innerHTML = '<option value="app">Standalone</option>';
+    loaderEl.disabled = true;
+  } else if (comp === 'plugin') {
+    loaderEl.innerHTML = '<option value="paper">Paper</option>';
+    loaderEl.disabled = true;
+  } else {
+    loaderEl.innerHTML = '<option value="fabric">Fabric</option><option value="neoforge">NeoForge</option>';
+    loaderEl.disabled = false;
+  }
+  updatePreview();
+}
+
+async function fetchReleases() {
+  versionEl.innerHTML = '<option value="">Loading releases...</option>';
+  dlBtn.disabled = true;
+  dlBtnText.textContent = 'Loading...';
+
+  try {
+    const resp = await fetch(GITHUB_API);
+    if (!resp.ok) throw new Error(`GitHub API returned ${resp.status}`);
+    releases = await resp.json();
+
+    if (!releases.length) {
+      versionEl.innerHTML = '<option value="">No releases found</option>';
+      dlBtnText.textContent = 'No releases available';
+      return;
+    }
+
+    versionEl.innerHTML = releases.map(r =>
+      `<option value="${r.tag_name}">${r.tag_name}${r.prerelease ? ' (prerelease)' : ''}${r.draft ? ' (draft)' : ''}</option>`
+    ).join('');
+
+    const saved = localStorage.getItem('distrocraft_version');
+    if (saved && [...versionEl.options].some(o => o.value === saved)) {
+      versionEl.value = saved;
+    }
+
+    dlBtn.disabled = false;
+    dlBtnText.textContent = 'Download';
+    updatePreview();
+  } catch (err) {
+    versionEl.innerHTML = '<option value="">Failed to load releases</option>';
+    dlBtnText.textContent = 'Could not fetch releases';
+    dlStatus.textContent = 'Error: ' + err.message;
+    dlStatus.className = 'dl-status error';
+  }
+}
+
+function updatePreview() {
+  const comp = componentEl.value;
+  const loader = loaderEl.value;
+  const tag = versionEl.value;
+
+  previewEl.classList.remove('visible');
+  dlStatus.textContent = '';
+  dlStatus.className = 'dl-status';
+
+  if (!tag) {
+    dlBtn.disabled = true;
+    dlBtnText.textContent = 'Select a version';
+    return;
+  }
+
+  dlBtn.disabled = false;
+  dlBtnText.textContent = 'Download';
+
+  // Show preview
+  const filename = getFileName(comp, loader, tag);
+  if (!filename) return;
+
+  filenameEl.textContent = filename;
+
+  // Find release
+  const release = releases.find(r => r.tag_name === tag);
+  if (!release) {
+    hashEl.textContent = '';
+    sizeEl.textContent = '';
+    previewEl.classList.add('visible');
+    return;
+  }
+
+  const asset = release.assets.find(a => a.name === filename);
+  if (asset) {
+    hashEl.textContent = `SHA256: ${asset.sha256 || 'not available (check the release page)'}`;
+    sizeEl.textContent = `Size: ${formatSize(asset.size)}`;
+  } else {
+    hashEl.textContent = `Hash not available for this file`;
+    sizeEl.textContent = '';
+  }
+
+  previewEl.classList.add('visible');
+}
+
+function formatSize(bytes) {
+  if (!bytes) return 'unknown';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let i = 0;
+  let size = bytes;
+  while (size >= 1024 && i < units.length - 1) { size /= 1024; i++; }
+  return `${size.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function downloadFile() {
+  const comp = componentEl.value;
+  const loader = loaderEl.value;
+  const tag = versionEl.value;
+
+  if (!tag) return;
+
+  const filename = getFileName(comp, loader, tag);
+  const url = getDownloadUrl(filename, tag);
+
+  dlBtn.disabled = true;
+  dlBtnText.innerHTML = '<span class="spinner"></span> Downloading...';
+  dlStatus.textContent = '';
+  dlStatus.className = 'dl-status';
+
+  // Find SHA256 for display
+  const release = releases.find(r => r.tag_name === tag);
+  let sha = '';
+  if (release) {
+    const asset = release.assets.find(a => a.name === filename);
+    if (asset && asset.sha256) sha = asset.sha256;
+  }
+
+  // Save selected version
+  localStorage.setItem('distrocraft_version', tag);
+
+  // Trigger download via fetch to show hash first
+  fetch(url)
+    .then(resp => {
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const hashInfo = sha ? `SHA256: ${sha}` : 'Hash not available';
+      dlStatus.textContent = `Downloading ${filename} ... ${hashInfo}`;
+      dlStatus.className = 'dl-status success';
+
+      // Redirect to trigger save dialog
+      window.location.href = url;
+    })
+    .catch(err => {
+      dlStatus.textContent = `Download failed: ${err.message}. Trying direct download...`;
+      dlStatus.className = 'dl-status error';
+      // Fallback: redirect anyway
+      window.location.href = url;
+    })
+    .finally(() => {
+      setTimeout(() => {
+        dlBtn.disabled = false;
+        dlBtnText.textContent = 'Download';
+      }, 2000);
+    });
+}
+
+// Event listeners
+componentEl.addEventListener('change', () => {
+  updateLoaderOptions();
+  updatePreview();
+});
+loaderEl.addEventListener('change', updatePreview);
+versionEl.addEventListener('change', () => {
+  const tag = versionEl.value;
+  if (tag) localStorage.setItem('distrocraft_version', tag);
+  updatePreview();
+});
+dlBtn.addEventListener('click', downloadFile);
+
+// Dark mode toggle
+const htmlEl = document.documentElement;
+const themeToggle = document.getElementById('themeToggle');
+const themeIcon = document.getElementById('themeIcon');
+const themeLabel = document.getElementById('themeLabel');
+
+function setTheme(theme) {
+  htmlEl.setAttribute('data-theme', theme);
+  localStorage.setItem('distrocraft_theme', theme);
+  themeIcon.textContent = theme === 'dark' ? '🌙' : '☀️';
+  themeLabel.textContent = theme === 'dark' ? 'Dark' : 'Light';
+}
+
+// Detect initial preference: localStorage > system preference > light
+const stored = localStorage.getItem('distrocraft_theme');
+if (stored) {
+  setTheme(stored);
+} else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+  setTheme('dark');
+}
+
+themeToggle.addEventListener('click', () => {
+  const current = htmlEl.getAttribute('data-theme');
+  setTheme(current === 'dark' ? 'light' : 'dark');
+});
+
+// Listen for system preference changes
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+  if (!localStorage.getItem('distrocraft_theme')) {
+    setTheme(e.matches ? 'dark' : 'light');
+  }
+});
+
+// Init
+updateLoaderOptions();
+fetchReleases();
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+</script>
+</body>
+</html>

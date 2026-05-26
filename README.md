@@ -178,3 +178,6 @@ showHud=true
 
 ## Licence
 GNU GPLv3
+
+## Acknowledgements
+This project was developed with the assistance of AI (Claude by Anthropic).
