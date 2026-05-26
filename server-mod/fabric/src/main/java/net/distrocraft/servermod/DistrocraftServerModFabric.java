@@ -30,6 +30,7 @@ public class DistrocraftServerModFabric implements DedicatedServerModInitializer
         DistroLogger.info("Distrocraft Server Mod (Fabric) initialising");
 
         PayloadTypeRegistry.playC2S().register(DistrocraftPayload.TYPE, DistrocraftPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(DistrocraftPayload.TYPE, DistrocraftPayload.CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(DistrocraftPayload.TYPE, (payload, context) -> {
             ServerPlayer player = context.player();

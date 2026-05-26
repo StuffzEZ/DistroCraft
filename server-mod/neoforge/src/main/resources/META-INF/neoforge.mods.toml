@@ -4,7 +4,7 @@ license="GNU GPLv3"
 
 [[mods]]
 modId="distrocraft_server"
-version="1.0.0"
+version="1.0.1"
 displayName="Distrocraft Server"
 description="""
 Distrocraft Server Mod — distributes compute tasks to connected player clients.

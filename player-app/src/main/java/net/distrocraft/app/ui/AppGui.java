@@ -74,8 +74,9 @@ public final class AppGui extends JFrame {
         failLabel   = new JLabel("Failed: 0");
 
         JPanel statsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 4));
+        Color sepColor = UIManager.getColor("Separator.foreground");
         statsPanel.setBorder(BorderFactory.createMatteBorder(1, 0, 1, 0,
-                UIManager.getColor("Separator.foreground")));
+                sepColor != null ? sepColor : new Color(0x99, 0x99, 0x99)));
         statsPanel.add(statusLabel);
         statsPanel.add(new JSeparator(SwingConstants.VERTICAL));
         statsPanel.add(doneLabel);

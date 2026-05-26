@@ -52,6 +52,9 @@ public class DistrocraftServerModNeoForge {
                 }
             })
         );
+        registrar.playToClient(DistrocraftPayload.TYPE, DistrocraftPayload.CODEC,
+            (payload, context) -> {} // client handles this via its own receiver
+        );
     }
 
     private void onServerStarting(ServerStartingEvent event) {
