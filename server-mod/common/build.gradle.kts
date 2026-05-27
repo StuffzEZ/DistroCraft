@@ -1,6 +1,6 @@
 plugins { java }
 
-version = "1.0.1"
+version = "1.1.0"
 
 dependencies {
     compileOnly("com.google.code.gson:gson:2.10.1")

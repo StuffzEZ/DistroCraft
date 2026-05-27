@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "distrocraft_player",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "name": "Distrocraft Player",
   "description": "Contribute your spare resources to a Minecraft server.",
   "authors": ["Stuf_y"],
