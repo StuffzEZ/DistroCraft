@@ -56,18 +56,27 @@ public final class ConnectedClient {
         this.sendCallback = sendCallback;
     }
 
-    public synchronized void send(Object message) {
-        if (!connected) return;
+    public void send(Object message) {
+        Consumer<String> callback;
+        BufferedWriter out;
+        synchronized (this) {
+            if (!connected) return;
+            callback = sendCallback;
+            out = writer;
+        }
         String json = Protocol.serialise(message);
-        if (sendCallback != null) {
-            sendCallback.accept(json);
-        } else if (writer != null) {
+        if (callback != null) {
+            callback.accept(json);
+        } else if (out != null) {
             try {
                 writer.write(json);
                 writer.newLine();
                 writer.flush();
             } catch (IOException e) {
                 connected = false;
+                if (socket != null) {
+                    try { socket.close(); } catch (IOException ignored) {}
+                }
             }
         }
     }
@@ -101,15 +110,18 @@ public final class ConnectedClient {
     public String getClientId()              { return clientId; }
     public String getPlayerName()            { return playerName; }
     public int getMaxThreads()               { return maxThreads; }
-    public Map<String, Integer> getCapabilities() { return capabilities; }
-    public boolean isConnected()             { return connected; }
+    public Map<String, Integer> getCapabilities()  { return capabilities; }
+    public Consumer<String> getSendCallback()       { return sendCallback; }
+    public boolean isConnected() {
+        return connected && (socket == null || socket.isConnected());
+    }
     public Set<String> getActiveTasks()      { return Collections.unmodifiableSet(activeTasks); }
     public long getLastPingSent()            { return lastPingSent; }
     public Socket getSocket()                { return socket; }
 
     @Override
     public String toString() {
-        String name = playerName != null ? playerName : "app:" + clientId.substring(0, 8);
+        String name = playerName != null ? playerName : "app:" + clientId.substring(0, Math.min(8, clientId.length()));
         return "Client{" + name + ", threads=" + maxThreads +
                ", resources=" + capabilities +
                ", active=" + activeTasks.size() + ", alive=" + connected + "}";

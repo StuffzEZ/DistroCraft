@@ -10,9 +10,9 @@ public final class DistroTask {
     private final String kind;
     private final JsonObject payload;
     private volatile TaskState state;
-    private JsonObject result;
-    private String assignedClientId;
-    private long dispatchedAt;
+    private volatile JsonObject result;
+    private volatile String assignedClientId;
+    private volatile long dispatchedAt;
 
     public DistroTask(String kind, JsonObject payload) {
         this.id = UUID.randomUUID().toString();

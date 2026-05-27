@@ -18,7 +18,11 @@ public final class Protocol {
     }
 
     public record BaseMessage(String type) {
-        public MessageType messageType() { return MessageType.valueOf(type); }
+        public MessageType messageType() {
+            if (type == null) return null;
+            try { return MessageType.valueOf(type); }
+            catch (IllegalArgumentException e) { return null; }
+        }
     }
 
     public record HelloMessage(
@@ -89,6 +93,7 @@ public final class Protocol {
     }
 
     public static String serialise(Object msg) {
+        if (msg == null) return "{}";
         return GSON.toJson(msg);
     }
 

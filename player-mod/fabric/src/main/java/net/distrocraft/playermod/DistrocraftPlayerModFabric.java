@@ -11,6 +11,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.network.chat.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,8 +57,22 @@ public class DistrocraftPlayerModFabric implements ClientModInitializer {
             return false;
         });
 
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
-            startAgent());
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            if (config.autoStart) {
+                startAgent();
+            } else {
+                client.setScreen(new ConfirmScreen(
+                    result -> {
+                        if (result) startAgent();
+                    },
+                    Component.literal("Distrocraft"),
+                    Component.literal("This server uses Distrocraft to distribute computation. "
+                            + "Share your spare resources?\n\n"
+                            + "You can change this later with /distro start and /distro stop, "
+                            + "or set auto-start in the config screen.")
+                ));
+            }
+        });
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
             stopAgent());
@@ -77,39 +92,65 @@ public class DistrocraftPlayerModFabric implements ClientModInitializer {
                     (agent != null ? " | done=" + agent.getTasksCompleted() +
                                     " fail=" + agent.getTasksFailed() : ""));
             case "set"    -> {
-                if (parts.length < 3) { chat(mc, "Usage: /distro set <key> <value> or /distro set resources <key>=<value> ..."); return; }
-                if ("threads".equals(parts[1]) && parts.length >= 3) {
-                    try {
-                        config.threads = Integer.parseInt(parts[2]);
-                        config.resources.put("threads", config.threads);
-                        config.save(configDir);
-                        chat(mc, "threads set to " + parts[2]);
-                    } catch (NumberFormatException e) {
-                        chat(mc, "Invalid value: " + parts[2]);
-                    }
-                } else if ("resources".equals(parts[1])) {
-                    for (int i = 2; i < parts.length; i++) {
-                        String[] kv = parts[i].split("=", 2);
-                        if (kv.length == 2) {
-                            try {
-                                config.resources.put(kv[0], Integer.parseInt(kv[1]));
-                            } catch (NumberFormatException e) {
-                                chat(mc, "Invalid value for " + kv[0] + ": " + kv[1]);
-                            }
-                        } else {
-                            chat(mc, "Usage: <key>=<value>, got: " + parts[i]);
+                if (parts.length < 3) { chat(mc, "Usage: /distro set <key> <value>"); return; }
+                switch (parts[1]) {
+                    case "threads" -> {
+                        try {
+                            config.threads = Integer.parseInt(parts[2]);
+                            config.resources.put("threads", config.threads);
+                            config.save(configDir);
+                            chat(mc, "threads set to " + parts[2]);
+                        } catch (NumberFormatException e) {
+                            chat(mc, "Invalid value: " + parts[2]);
                         }
                     }
-                    if (config.resources.containsKey("threads")) {
-                        config.threads = config.resources.get("threads");
+                    case "autoStart" -> {
+                        config.autoStart = Boolean.parseBoolean(parts[2]);
+                        config.save(configDir);
+                        chat(mc, "autoStart set to " + config.autoStart);
                     }
-                    config.save(configDir);
-                    chat(mc, "Resources updated: " + config.resources);
-                } else {
-                    chat(mc, "Usage: /distro set threads <value> or /distro set resources <key>=<value> ...");
+                    case "showHud" -> {
+                        config.showHud = Boolean.parseBoolean(parts[2]);
+                        config.save(configDir);
+                        chat(mc, "showHud set to " + config.showHud);
+                    }
+                    case "host" -> {
+                        config.host = parts[2];
+                        config.save(configDir);
+                        chat(mc, "host set to " + config.host);
+                    }
+                    case "port" -> {
+                        try {
+                            config.port = Integer.parseInt(parts[2]);
+                            config.save(configDir);
+                            chat(mc, "port set to " + config.port);
+                        } catch (NumberFormatException e) {
+                            chat(mc, "Invalid port: " + parts[2]);
+                        }
+                    }
+                    case "resources" -> {
+                        for (int i = 2; i < parts.length; i++) {
+                            String[] kv = parts[i].split("=", 2);
+                            if (kv.length == 2) {
+                                try {
+                                    config.resources.put(kv[0], Integer.parseInt(kv[1]));
+                                } catch (NumberFormatException e) {
+                                    chat(mc, "Invalid value for " + kv[0] + ": " + kv[1]);
+                                }
+                            } else {
+                                chat(mc, "Usage: <key>=<value>, got: " + parts[i]);
+                            }
+                        }
+                        if (config.resources.containsKey("threads")) {
+                            config.threads = config.resources.get("threads");
+                        }
+                        config.save(configDir);
+                        chat(mc, "Resources updated: " + config.resources);
+                    }
+                    default -> chat(mc, "Keys: threads, host, port, autoStart, showHud, resources");
                 }
             }
-            default -> chat(mc, "Commands: start, stop, status, set [threads|resources]");
+            default -> chat(mc, "Commands: start, stop, status, set [threads|host|port|autoStart|showHud|resources]");
         }
     }
 

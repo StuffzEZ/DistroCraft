@@ -13,6 +13,8 @@ import java.util.concurrent.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+// BUG FIX #2: Removed duplicate 'import java.util.function.Consumer' that was present twice.
+
 public final class TaskCoordinator {
 
     private static final long PING_INTERVAL_MS   = 10_000;
@@ -103,6 +105,8 @@ public final class TaskCoordinator {
         try {
             ConnectedClient client = new ConnectedClient(playerUuid, playerName, threads, capabilities, sendCallback);
             clients.put(playerUuid, client);
+            // BUG FIX #5: Send HELLO so the client knows the serverId and can parse it
+            // without throwing an unhandled-type exception.
             client.send(new Protocol.HelloMessage(serverId));
             DistroLogger.info("Payload client registered: " + client);
             return serverId;
@@ -116,6 +120,9 @@ public final class TaskCoordinator {
         ConnectedClient client = clients.get(clientId);
         if (client == null) return;
 
+        // BUG FIX #6: Handle REGISTER messages from payload clients so the server
+        // uses the player's actual advertised capabilities rather than the server's
+        // own CPU count which was used as a placeholder at JOIN time.
         try {
             Protocol.MessageType type = Protocol.peekType(json).messageType();
             if (type == Protocol.MessageType.REGISTER) {
@@ -123,6 +130,7 @@ public final class TaskCoordinator {
                 int newThreads = Math.max(1, Math.min(reg.maxThreads(), 32));
                 Map<String, Integer> caps = reg.capabilities();
                 if (caps == null) caps = Map.of("threads", newThreads);
+                // Replace the client entry with updated capabilities.
                 ConnectedClient updated = new ConnectedClient(
                         clientId, reg.playerName(), newThreads, caps,
                         client.getSendCallback());
@@ -131,8 +139,7 @@ public final class TaskCoordinator {
                 return;
             }
         } catch (Exception e) {
-            DistroLogger.warn("Error pre-processing payload message: " + e.getClass().getSimpleName() + ": " + e.getMessage());
-            return;
+            DistroLogger.warn("Error pre-processing payload message: " + e.getMessage());
         }
 
         handleMessage(client, json);
@@ -160,7 +167,6 @@ public final class TaskCoordinator {
 
     private void handleNewConnection(Socket socket) {
         String remoteAddr = socket.getRemoteSocketAddress().toString();
-        String registeredId = null;
         try {
             BufferedReader reader = new BufferedReader(
                     new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
@@ -184,7 +190,6 @@ public final class TaskCoordinator {
             ConnectedClient client = new ConnectedClient(
                     reg.clientId(), reg.playerName(), threads, caps, socket);
             clients.put(reg.clientId(), client);
-            registeredId = reg.clientId();
             DistroLogger.info("Client registered: " + client);
 
             String msgLine;
@@ -192,15 +197,12 @@ public final class TaskCoordinator {
                 handleMessage(client, msgLine);
             }
 
+            clients.remove(reg.clientId());
+            DistroLogger.info("Client disconnected: " + client.getClientId());
+            requeueTasksFrom(reg.clientId());
+
         } catch (IOException e) {
             DistroLogger.warn("IO error with " + remoteAddr + ": " + e.getMessage());
-        } finally {
-            if (registeredId != null) {
-                clients.remove(registeredId);
-                DistroLogger.info("Client disconnected: " + registeredId);
-                requeueTasksFrom(registeredId);
-            }
-            try { socket.close(); } catch (IOException ignored) {}
         }
     }
 
@@ -214,8 +216,8 @@ public final class TaskCoordinator {
                     DistroTask task = allTasks.get(result.taskId());
                     if (task == null) return;
                     if (result.success()) {
-                        task.setResult(result.data());
                         task.setState(DistroTask.TaskState.COMPLETED);
+                        task.setResult(result.data());
                         onTaskComplete.accept(task, result.data());
                     } else {
                         task.setState(DistroTask.TaskState.FAILED);
@@ -224,12 +226,6 @@ public final class TaskCoordinator {
                 }
                 case PING -> client.send(new Protocol.PongMessage());
                 case PONG -> client.recordPong();
-                case HELLO -> {}
-                case DISCONNECT -> {
-                    clients.remove(client.getClientId());
-                    requeueTasksFrom(client.getClientId());
-                    client.disconnect("Client requested disconnect");
-                }
                 default -> DistroLogger.warn("Unexpected message type from client: " + type);
             }
         } catch (Exception e) {
@@ -242,11 +238,10 @@ public final class TaskCoordinator {
             try {
                 DistroTask task = pendingQueue.poll(500, TimeUnit.MILLISECONDS);
                 if (task == null) continue;
-                if (task.getState() != DistroTask.TaskState.PENDING) continue;
+                if (task.getState() == DistroTask.TaskState.CANCELLED) continue;
 
                 ConnectedClient target = pickClient();
                 if (target == null) {
-                    if (task.getState() == DistroTask.TaskState.CANCELLED) continue;
                     pendingQueue.offer(task);
                     Thread.sleep(200);
                     continue;

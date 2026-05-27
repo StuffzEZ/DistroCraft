@@ -16,7 +16,11 @@ public final class ClientProtocol {
     public enum MessageType { HELLO, REGISTER, TASK, RESULT, PING, PONG, DISCONNECT }
 
     public record BaseMessage(String type) {
-        public MessageType messageType() { return MessageType.valueOf(type); }
+        public MessageType messageType() {
+            if (type == null) return null;
+            try { return MessageType.valueOf(type); }
+            catch (IllegalArgumentException e) { return null; }
+        }
     }
 
     public record HelloMessage(String type, int version, String serverId) {}
@@ -49,7 +53,7 @@ public final class ClientProtocol {
         public PongMessage() { this(MessageType.PONG.name()); }
     }
 
-    public static String serialise(Object msg)          { return GSON.toJson(msg); }
+    public static String serialise(Object msg)          { if (msg == null) return "{}"; return GSON.toJson(msg); }
     public static BaseMessage  peekType(String line)    { return GSON.fromJson(line, BaseMessage.class); }
     public static HelloMessage parseHello(String line)  { return GSON.fromJson(line, HelloMessage.class); }
     public static TaskMessage  parseTask(String line)   { return GSON.fromJson(line, TaskMessage.class); }

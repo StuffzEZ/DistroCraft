@@ -3,8 +3,8 @@ package net.distrocraft.playermod;
 import net.distrocraft.playermod.agent.AgentConfig;
 import net.distrocraft.playermod.agent.ComputeAgent;
 import net.neoforged.bus.api.IEventBus;
-import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.client.event.ClientChatEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
@@ -30,9 +30,8 @@ public class DistrocraftPlayerModNeoForge {
     private Path         configDir;
     private String       statusLine = "Distrocraft: idle";
 
-    public DistrocraftPlayerModNeoForge(IEventBus modBus, ModContainer container) {
-        configDir = container.getModInfo().getOwningFile()
-                .getFile().getFilePath().getParent().resolve("config");
+    public DistrocraftPlayerModNeoForge(IEventBus modBus) {
+        configDir = FMLPaths.CONFIGDIR.get();
         config = AgentConfig.load(configDir);
 
         modBus.addListener(this::onRegisterPayloads);

@@ -34,8 +34,8 @@ public final class PluginCoordinator {
     private ServerSocket serverSocket;
     private volatile boolean running = false;
 
-    private BiConsumer<PluginTask, JsonObject> onComplete = (t, r) -> {};
-    private BiConsumer<PluginTask, String>     onFail     = (t, e) -> {};
+    private volatile BiConsumer<PluginTask, JsonObject> onComplete = (t, r) -> {};
+    private volatile BiConsumer<PluginTask, String>     onFail     = (t, e) -> {};
 
     public PluginCoordinator(int port, Logger logger) {
         this.port   = port;
@@ -88,6 +88,7 @@ public final class PluginCoordinator {
     }
 
     private void handleConnection(Socket socket) {
+        String registeredId = null;
         try {
             BufferedReader reader = new BufferedReader(
                     new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
@@ -110,6 +111,7 @@ public final class PluginCoordinator {
             PluginConnectedClient client = new PluginConnectedClient(
                     reg.clientId(), reg.playerName(), threads, caps, socket);
             clients.put(reg.clientId(), client);
+            registeredId = reg.clientId();
             logger.info("[Distrocraft] Client registered: " + client);
 
             String msg;
@@ -117,12 +119,15 @@ public final class PluginCoordinator {
                 handleMessage(client, msg);
             }
 
-            clients.remove(reg.clientId());
-            requeueFrom(reg.clientId());
-            logger.info("[Distrocraft] Client disconnected: " + reg.clientId());
-
         } catch (IOException e) {
             logger.warning("[Distrocraft] Connection error: " + e.getMessage());
+        } finally {
+            if (registeredId != null) {
+                clients.remove(registeredId);
+                requeueFrom(registeredId);
+                logger.info("[Distrocraft] Client disconnected: " + registeredId);
+            }
+            try { socket.close(); } catch (IOException ignored) {}
         }
     }
 
@@ -135,8 +140,8 @@ public final class PluginCoordinator {
                     PluginTask task = allTasks.get(res.taskId());
                     if (task == null) return;
                     if (res.success()) {
-                        task.setState(PluginTask.State.COMPLETED);
                         task.setResult(res.data());
+                        task.setState(PluginTask.State.COMPLETED);
                         onComplete.accept(task, res.data());
                     } else {
                         task.setState(PluginTask.State.FAILED);
@@ -145,6 +150,11 @@ public final class PluginCoordinator {
                 }
                 case PING -> client.send(new PluginProtocol.PongMessage());
                 case PONG -> client.recordPong();
+                case DISCONNECT -> {
+                    clients.remove(client.getClientId());
+                    requeueFrom(client.getClientId());
+                    client.disconnect("Client requested disconnect");
+                }
                 default   -> {}
             }
         } catch (Exception e) {

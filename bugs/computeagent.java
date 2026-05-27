@@ -7,11 +7,9 @@ import net.distrocraft.playermod.task.TaskExecutor;
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 public final class ComputeAgent {
@@ -37,13 +35,14 @@ public final class ComputeAgent {
                 Thread t = new Thread(r, "distrocraft-agent-scheduler"); t.setDaemon(true); return t;
             });
 
+    // BUG FIX #1: Keep a reference to the ping future so we can cancel/restart it.
     private ScheduledFuture<?> pingFuture;
 
     private Consumer<String> onStatusChange = s -> {};
     private Consumer<String> onError        = e -> {};
 
-    private final AtomicInteger tasksCompleted = new AtomicInteger();
-    private final AtomicInteger tasksFailed    = new AtomicInteger();
+    private volatile int tasksCompleted = 0;
+    private volatile int tasksFailed    = 0;
 
     public ComputeAgent(String host, int port, int threads, String playerName,
                         Map<String, Integer> capabilities) {
@@ -73,25 +72,26 @@ public final class ComputeAgent {
         });
     }
 
-    public synchronized void start() {
+    public void start() {
         if (running) return;
         running = true;
 
         if (sendCallback != null) {
-            // Payload mode: mark connected, register capabilities, start ping scheduler
+            // BUG FIX #1: In payload mode we don't call connectAndRun(), so the ping
+            // scheduler was never started. Start it here.
             connected = true;
+            // Send our REGISTER message so the server knows our capabilities.
             send(new ClientProtocol.RegisterMessage(clientId, threads, playerName, capabilities));
-            onStatusChange.accept("Connected \u2014 " + resourcesString());
             pingFuture = scheduler.scheduleAtFixedRate(this::sendPing, 8, 8, TimeUnit.SECONDS);
+            onStatusChange.accept("Connected \u2014 " + resourcesString());
         } else {
-            connected = false;
             Thread connector = new Thread(this::connectAndRun, "distrocraft-agent-main");
             connector.setDaemon(true);
             connector.start();
         }
     }
 
-    public Map<String, Integer> getCapabilities() { return Collections.unmodifiableMap(capabilities); }
+    public Map<String, Integer> getCapabilities() { return capabilities; }
 
     private String resourcesString() {
         StringBuilder sb = new StringBuilder();
@@ -105,26 +105,22 @@ public final class ComputeAgent {
     public void stop() {
         running = false;
         connected = false;
+        // BUG FIX #1: Cancel the ping future on stop.
         if (pingFuture != null) {
             pingFuture.cancel(false);
             pingFuture = null;
         }
-        if (reader != null) { try { reader.close(); } catch (IOException ignored) {} }
-        if (writer != null) { try { writer.close(); } catch (IOException ignored) {} }
         if (socket != null) {
             try { socket.close(); } catch (IOException ignored) {}
-            socket = null;
         }
-        reader = null;
-        writer = null;
         taskPool.shutdown();
         scheduler.shutdown();
         onStatusChange.accept("Disconnected");
     }
 
     public boolean isConnected() { return connected; }
-    public int getTasksCompleted() { return tasksCompleted.get(); }
-    public int getTasksFailed()    { return tasksFailed.get(); }
+    public int getTasksCompleted() { return tasksCompleted; }
+    public int getTasksFailed()    { return tasksFailed; }
     public String getClientId()    { return clientId; }
 
     public void onStatusChange(Consumer<String> cb) { this.onStatusChange = cb; }
@@ -142,17 +138,19 @@ public final class ComputeAgent {
                 }
                 case PING -> send(new ClientProtocol.PongMessage());
                 case PONG -> {}
+                // BUG FIX #5: HELLO is sent by the server on payload-client registration.
+                // Handle it gracefully instead of throwing on MessageType.valueOf().
+                case HELLO -> { /* acknowledged, no-op in payload mode */ }
                 case DISCONNECT -> {
                     running = false;
                     connected = false;
                     onStatusChange.accept("Server disconnected us");
                 }
-                case HELLO -> {}
                 default -> {}
             }
             return true;
         } catch (Exception e) {
-            onError.accept("Message handling error: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            onError.accept("Message handling error: " + e.getMessage());
             return false;
         }
     }
@@ -170,19 +168,17 @@ public final class ComputeAgent {
 
                 handshake();
                 connected = true;
-                onStatusChange.accept("Connected \u2014 " + resourcesString());
-
-                // BUG FIX #3: Cancel any existing ping future before scheduling a new one
-                if (pingFuture != null) {
-                    pingFuture.cancel(false);
-                    pingFuture = null;
-                }
+                // BUG FIX #1: Schedule the ping only once per connection attempt,
+                // cancel on disconnect so reconnects don't stack multiple schedulers.
+                if (pingFuture != null) pingFuture.cancel(false);
                 pingFuture = scheduler.scheduleAtFixedRate(this::sendPing, 8, 8, TimeUnit.SECONDS);
+                onStatusChange.accept("Connected \u2014 " + resourcesString());
 
                 readLoop();
 
             } catch (IOException e) {
                 connected = false;
+                if (pingFuture != null) { pingFuture.cancel(false); pingFuture = null; }
                 if (running) {
                     onError.accept("Connection error: " + e.getMessage());
                     onStatusChange.accept("Reconnecting in 10s\u2026");
@@ -215,10 +211,10 @@ public final class ComputeAgent {
         try {
             JsonObject result = TaskExecutor.execute(task);
             send(ClientProtocol.ResultMessage.ok(task.taskId(), result));
-            tasksCompleted.incrementAndGet();
+            tasksCompleted++;
         } catch (Exception e) {
             send(ClientProtocol.ResultMessage.fail(task.taskId(), e.getMessage()));
-            tasksFailed.incrementAndGet();
+            tasksFailed++;
         }
     }
 

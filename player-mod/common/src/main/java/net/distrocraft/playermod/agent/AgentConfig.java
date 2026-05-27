@@ -38,7 +38,9 @@ public final class AgentConfig {
                         } catch (NumberFormatException ignored) {}
                     }
                 }
-            } catch (IOException | NumberFormatException ignored) {}
+            } catch (IOException | NumberFormatException e) {
+                System.err.println("[Distrocraft] Failed to load config: " + e.getMessage());
+            }
         }
         // Ensure threads is always in resources
         if (!cfg.resources.containsKey("threads")) {
@@ -63,7 +65,9 @@ public final class AgentConfig {
             try (OutputStream out = Files.newOutputStream(file)) {
                 p.store(out, "Distrocraft Client Configuration");
             }
-        } catch (IOException ignored) {}
+        } catch (IOException e) {
+            System.err.println("[Distrocraft] Failed to save config: " + e.getMessage());
+        }
     }
 
     public static AgentConfig defaults() {

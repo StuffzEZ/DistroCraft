@@ -21,8 +21,8 @@ public final class PluginConnectedClient {
 
     private final Set<String> activeTasks = ConcurrentHashMap.newKeySet();
     private volatile boolean  connected   = true;
-    private long lastPingSent      = 0;
-    private long lastPongReceived  = System.currentTimeMillis();
+    private long          lastPingSent      = 0;
+    private volatile long lastPongReceived  = System.currentTimeMillis();
 
     public PluginConnectedClient(String clientId, String playerName,
                                   int maxThreads, Map<String, Integer> capabilities,
@@ -36,13 +36,20 @@ public final class PluginConnectedClient {
                 new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
     }
 
-    public synchronized void send(Object message) {
-        if (!connected) return;
+    public void send(Object message) {
+        BufferedWriter out;
+        synchronized (this) {
+            if (!connected) return;
+            out = writer;
+        }
         try {
-            writer.write(PluginProtocol.serialise(message));
-            writer.newLine();
-            writer.flush();
-        } catch (IOException e) { connected = false; }
+            out.write(PluginProtocol.serialise(message));
+            out.newLine();
+            out.flush();
+        } catch (IOException e) {
+            synchronized (this) { connected = false; }
+            try { socket.close(); } catch (IOException ignored) {}
+        }
     }
 
     public void disconnect(String reason) {
@@ -68,7 +75,7 @@ public final class PluginConnectedClient {
     public long        getLastPingSent() { return lastPingSent; }
 
     @Override public String toString() {
-        String name = playerName != null ? playerName : "app:" + clientId.substring(0, 8);
+        String name = playerName != null ? playerName : "app:" + clientId.substring(0, Math.min(8, clientId.length()));
         return "Client{" + name + ", threads=" + maxThreads +
                ", resources=" + capabilities + ", active=" + activeTasks.size() + "}";
     }

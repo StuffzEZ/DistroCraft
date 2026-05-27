@@ -16,7 +16,11 @@ public final class AppProtocol {
     public enum MessageType { HELLO, REGISTER, TASK, RESULT, PING, PONG, DISCONNECT }
 
     public record BaseMessage(String type) {
-        public MessageType messageType() { return MessageType.valueOf(type); }
+        public MessageType messageType() {
+            if (type == null) return null;
+            try { return MessageType.valueOf(type); }
+            catch (IllegalArgumentException e) { return null; }
+        }
     }
     public record HelloMessage(String type, int version, String serverId) {}
     public record RegisterMessage(String type, String clientId, int maxThreads, String playerName, Map<String, Integer> capabilities) {
@@ -40,7 +44,7 @@ public final class AppProtocol {
     public record PongMessage(String type)  { public PongMessage()  { this(MessageType.PONG.name()); } }
     public record DisconnectMessage(String type, String reason) {}
 
-    public static String serialise(Object o)         { return GSON.toJson(o); }
+    public static String serialise(Object o)         { if (o == null) return "{}"; return GSON.toJson(o); }
     public static BaseMessage peekType(String line)  { return GSON.fromJson(line, BaseMessage.class); }
     public static HelloMessage parseHello(String l)  { return GSON.fromJson(l, HelloMessage.class); }
     public static TaskMessage  parseTask(String l)   { return GSON.fromJson(l, TaskMessage.class); }

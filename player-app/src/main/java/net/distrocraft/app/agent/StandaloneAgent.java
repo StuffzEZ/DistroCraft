@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 public final class StandaloneAgent {
@@ -23,7 +24,7 @@ public final class StandaloneAgent {
 
     private Socket         socket;
     private BufferedReader reader;
-    private BufferedWriter writer;
+    private volatile BufferedWriter writer;
 
     private volatile boolean running   = false;
     private volatile boolean connected = false;
@@ -34,10 +35,13 @@ public final class StandaloneAgent {
                 Thread t = new Thread(r, "dc-scheduler"); t.setDaemon(true); return t;
             });
 
+    private volatile ScheduledFuture<?> pingFuture;
+
     private Consumer<String> onStatus = s -> {};
     private Consumer<String> onLog    = s -> {};
 
-    private volatile int done = 0, failed = 0;
+    private final AtomicInteger done = new AtomicInteger();
+    private final AtomicInteger failed = new AtomicInteger();
 
     public StandaloneAgent(String host, int port, int threads, String label,
                            Map<String, Integer> capabilities) {
@@ -63,15 +67,26 @@ public final class StandaloneAgent {
     public void stop() {
         running = false;
         connected = false;
-        try { if (socket != null) socket.close(); } catch (IOException ignored) {}
+        if (pingFuture != null) {
+            pingFuture.cancel(false);
+            pingFuture = null;
+        }
+        if (reader != null) { try { reader.close(); } catch (IOException ignored) {} }
+        if (writer != null) { try { writer.close(); } catch (IOException ignored) {} }
+        if (socket != null) {
+            try { socket.close(); } catch (IOException ignored) {}
+            socket = null;
+        }
+        reader = null;
+        writer = null;
         taskPool.shutdown();
         scheduler.shutdown();
         onStatus.accept("Stopped");
     }
 
     public boolean isConnected()       { return connected; }
-    public int getTasksDone()          { return done; }
-    public int getTasksFailed()        { return failed; }
+    public int getTasksDone()          { return done.get(); }
+    public int getTasksFailed()        { return failed.get(); }
     public String getClientId()        { return clientId; }
     public Map<String, Integer> getCapabilities() { return capabilities; }
 
@@ -100,23 +115,32 @@ public final class StandaloneAgent {
                 onStatus.accept("Connected \u2014 " + resourcesString());
                 onLog.accept("Registered with server " + hello.serverId());
 
-                scheduler.scheduleAtFixedRate(
+                if (pingFuture != null) {
+                    pingFuture.cancel(false);
+                }
+                pingFuture = scheduler.scheduleAtFixedRate(
                         () -> send(new AppProtocol.PingMessage()), 8, 8, TimeUnit.SECONDS);
 
                 String line;
                 while (running && (line = reader.readLine()) != null) {
                     final String msg = line;
-                    AppProtocol.MessageType type = AppProtocol.peekType(msg).messageType();
-                    switch (type) {
-                        case TASK -> {
-                            AppProtocol.TaskMessage task = AppProtocol.parseTask(msg);
-                            onLog.accept("Received task " + task.taskId() + " [" + task.kind() + "]");
-                            taskPool.submit(() -> runTask(task));
+                    try {
+                        AppProtocol.MessageType type = AppProtocol.peekType(msg).messageType();
+                        if (type == null) continue;
+                        switch (type) {
+                            case TASK -> {
+                                AppProtocol.TaskMessage task = AppProtocol.parseTask(msg);
+                                if (task == null) continue;
+                                onLog.accept("Received task " + task.taskId() + " [" + task.kind() + "]");
+                                taskPool.submit(() -> runTask(task));
+                            }
+                            case PING -> send(new AppProtocol.PongMessage());
+                            case PONG -> {}
+                            case DISCONNECT -> { running = false; connected = false; return; }
+                            default -> {}
                         }
-                        case PING -> send(new AppProtocol.PongMessage());
-                        case PONG -> {}
-                        case DISCONNECT -> { running = false; connected = false; return; }
-                        default -> {}
+                    } catch (RuntimeException e) {
+                        onLog.accept("Bad message: " + e.getClass().getSimpleName() + ": " + e.getMessage());
                     }
                 }
 
@@ -135,11 +159,11 @@ public final class StandaloneAgent {
         try {
             JsonObject result = AppTaskExecutor.execute(task);
             send(AppProtocol.ResultMessage.ok(task.taskId(), result));
-            done++;
+            done.incrementAndGet();
             onLog.accept("Completed " + task.taskId());
         } catch (Exception e) {
             send(AppProtocol.ResultMessage.fail(task.taskId(), e.getMessage()));
-            failed++;
+            failed.incrementAndGet();
             onLog.accept("Failed " + task.taskId() + ": " + e.getMessage());
         }
     }
